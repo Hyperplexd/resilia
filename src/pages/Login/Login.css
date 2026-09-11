@@ -1,0 +1,102 @@
+.login {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--space-6) var(--space-4) 60px;
+  background:
+    radial-gradient(ellipse 900px 500px at 50% 0%, rgba(255, 106, 61, 0.09), transparent 70%),
+    var(--bg-base);
+  position: relative;
+}
+
+.login__mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-bottom: var(--space-5);
+  background: radial-gradient(circle at 35% 30%, var(--accent-ember), var(--accent-ember-dim) 70%);
+  box-shadow: 0 0 40px 4px rgba(255, 106, 61, 0.35);
+}
+
+.login__brand {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-4);
+}
+
+.login__question {
+  font-size: clamp(32px, 6vw, 56px);
+  line-height: 1.08;
+  max-width: 780px;
+  color: var(--text-primary);
+}
+
+.login__sub {
+  margin-top: var(--space-4);
+  max-width: 520px;
+  font-size: 16px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.login__roles {
+  display: flex;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  width: 100%;
+  max-width: 640px;
+}
+
+.role-card {
+  flex: 1;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.role-card:hover,
+.role-card:focus-visible {
+  background: var(--bg-panel-hover);
+  border-color: var(--accent-signal-dim);
+}
+
+.role-card--authority:hover,
+.role-card--authority:focus-visible {
+  border-color: var(--accent-ember-dim);
+}
+
+.role-card__title {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.role-card__desc {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.login__footnote {
+  margin-top: var(--space-6);
+  font-size: 12.5px;
+  color: var(--text-muted);
+  max-width: 480px;
+}
+
+@media (max-width: 560px) {
+  .login__roles {
+    flex-direction: column;
+  }
+}

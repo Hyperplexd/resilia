@@ -1,0 +1,108 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* --- Surfaces --- */
+  --bg-base: #0a0d12;
+  --bg-raised: #10141b;
+  --bg-panel: #141a22;
+  --bg-panel-hover: #1a2129;
+  --border-subtle: #232b36;
+  --border-strong: #2f3947;
+
+  /* --- Text --- */
+  --text-primary: #e7ebf0;
+  --text-secondary: #96a2b3;
+  --text-muted: #5e6b7c;
+
+  /* --- Accents --- */
+  --accent-ember: #ff6a3d;   /* primary: fire / alerts / primary CTA */
+  --accent-ember-dim: #7a3822;
+  --accent-signal: #3fc6d4;  /* secondary: ops / routes / active systems */
+  --accent-signal-dim: #1f4d52;
+
+  /* --- Status --- */
+  --status-ok: #4bc292;
+  --status-warn: #e0a83d;
+  --status-critical: #e2483f;
+
+  /* --- Type --- */
+  --font-ui: 'Manrope', -apple-system, 'Segoe UI', sans-serif;
+  --font-data: 'IBM Plex Mono', 'SFMono-Regular', monospace;
+
+  /* --- Scale --- */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+/* Metric / timestamp / coordinate values read as instrument output */
+.data-value {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--accent-ember-dim);
+  color: var(--text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-signal);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

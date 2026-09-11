@@ -1,0 +1,20 @@
+.placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+}
+
+.placeholder__label {
+  font-family: var(--font-data);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.placeholder__note {
+  font-size: 13.5px;
+}
