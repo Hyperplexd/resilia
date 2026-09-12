@@ -21,6 +21,15 @@
   box-shadow: 0 0 40px 4px rgba(255, 106, 61, 0.35);
 }
 
+.login__mark--pulse {
+  animation: mark-pulse 0.9s ease-in-out infinite;
+}
+
+@keyframes mark-pulse {
+  0%, 100% { box-shadow: 0 0 40px 4px rgba(255, 106, 61, 0.35); }
+  50% { box-shadow: 0 0 56px 10px rgba(255, 106, 61, 0.55); }
+}
+
 .login__brand {
   font-size: 13px;
   font-weight: 700;
@@ -75,6 +84,20 @@
 .role-card--authority:hover,
 .role-card--authority:focus-visible {
   border-color: var(--accent-ember-dim);
+}
+
+.role-card:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.login__status {
+  margin-top: var(--space-4);
+  height: 16px;
+  font-family: var(--font-data);
+  font-size: 12.5px;
+  color: var(--accent-signal);
+  letter-spacing: 0.02em;
 }
 
 .role-card__title {

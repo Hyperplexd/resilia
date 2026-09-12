@@ -39,10 +39,30 @@
 .topbar__status {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   font-family: var(--font-data);
   font-size: 13px;
   color: var(--text-secondary);
+}
+
+.shell__role {
+  padding: 3px 9px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+
+.shell__switch {
+  background: none;
+  border: none;
+  color: var(--accent-signal);
+  font-family: var(--font-data);
+  font-size: 12.5px;
+  padding: 0;
+}
+
+.shell__switch:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 640px) {

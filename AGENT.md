@@ -1,6 +1,6 @@
-# AGENT.md — Engineering Rules for EnRoute
+# AGENT.md — Engineering Rules for Resilia
 
-This file defines the permanent engineering principles, rules, and operational guidelines for the **EnRoute** Flutter project.
+This file defines the permanent engineering principles, rules, and operational guidelines for the **Resilia** project.
 
 ---
 
@@ -33,7 +33,7 @@ This file defines the permanent engineering principles, rules, and operational g
   * Unnecessary generic components
   * Premature design systems
   * Premature state-management architecture
-* Use Flutter's simplest appropriate mechanisms (e.g. `StatelessWidget`, `StatefulWidget`, `ValueNotifier` when needed) unless the application actually requires something more sophisticated.
+* Use the simplest appropriate mechanisms for the current stack (e.g. plain React components, local state, hooks, and small reusable UI helpers) unless the application actually requires something more sophisticated.
 * Senior Engineer Test:
   > *Would a senior engineer look at this and consider it unnecessarily complicated?*
   > If yes, simplify it.
@@ -56,37 +56,38 @@ This file defines the permanent engineering principles, rules, and operational g
 
 * Turn vague instructions into verifiable targets before writing code.
 * For UI work, define concrete acceptance criteria before implementation.
-* For every screen (starting with the Home Screen), verify:
-  * The application builds and launches successfully on Android.
+* For every screen (starting with the landing/primary flow), verify:
+  * The application builds and runs successfully in the browser.
   * The screen layout faithfully matches the supplied design.
   * Text, spacing, hierarchy, colors, buttons, and interactive elements match the design.
-  * The screen scales cleanly across common Android device screen sizes.
-  * There are no overflow errors (`RenderFlex` overflow) or clipping issues.
+  * The screen scales cleanly across common desktop and tablet sizes.
+  * There are no layout overflow, clipping, or broken responsive issues.
   * Navigation infrastructure supports adding future screens incrementally without rewrites.
   * Prefer measurable verification over subjective statements like "looks good."
 
 ---
 
-## 5. Flutter Architecture & Organization
+## 5. Architecture & Organization
 
 * Keep the architecture intentionally small and modular:
   ```text
-  lib/
-    main.dart
-    app.dart
-    screens/
-      home/
-        home_screen.dart
-    widgets/
-    theme/
-    models/        (only when data models exist)
-  assets/
-    images/
-    icons/
-    fonts/
+  src/
+    App.tsx
+    main.tsx
+    pages/
+      Login/
+      Resident/
+      Authority/
+      Simulation/
+    components/
+    auth/
+    hooks/
+    simulation/
+    data/
+    utils/
   ```
 * Do not create folders merely because they might be useful someday.
-* Future screens will be added screen-by-screen under `lib/screens/<screen_name>/`.
+* Future screens will be added screen-by-screen under `src/pages/<screen_name>/`.
 
 ---
 
@@ -94,15 +95,15 @@ This file defines the permanent engineering principles, rules, and operational g
 
 * Set up simple, decoupled navigation suitable for incremental screen additions.
 * Keep navigation concerns distinct from visual widget implementations.
-* The Home Screen is the initial route (`/`).
+* The landing screen is the initial route (`/`).
 * Do not add complex third-party routing frameworks unless explicitly requested.
 
 ---
 
-## 7. Android Configuration & Compatibility
+## 7. Frontend Compatibility & Responsiveness
 
-* Keep Android build configuration valid, modern, and lean.
-* Support common Android screen resolutions and densities gracefully using responsive layout primitives (`SafeArea`, `LayoutBuilder`, `SingleChildScrollView`, `Expanded`, `Flexible`, `Stack`, `Padding`).
+* Keep the browser build configuration valid, modern, and lean.
+* Support common desktop and tablet screen sizes gracefully using responsive layout primitives (`LayoutBuilder`, `Flex`, `Stack`, `Padding`, `Grid`, `Responsive` patterns where needed).
 * Avoid platform-specific bloat.
 
 ---
@@ -147,8 +148,8 @@ Follow this 6-step sequence for every task:
 
 ## 12. Do Not Build Ahead
 
-* EnRoute is developed **screen by screen**.
-* Do not implement future placeholder screens (Quest, Learning, Progress, Profile, Settings, Onboarding, Authentication, Results) until specifically requested.
+* Resilia is developed **screen by screen**.
+* Do not implement future placeholder screens until specifically requested.
 * Focus all engineering effort on making the **current target screen excellent**.
 
 ---
@@ -193,9 +194,9 @@ A suitable format is:
 
 ### 2026-08-28 — Home Screen
 
-- Added the initial EnRoute Home Screen based on the provided UI design.
+- Added the initial Resilia screen flow based on the provided UI design.
 - Added the initial screen/navigation structure so additional screens can be introduced incrementally.
-- Added the required Flutter assets and Android configuration.
+- Added the required frontend assets and responsive layout configuration.
 ```
 
 If a `## Change Log` section already exists, append the new entry to it rather than creating another one.

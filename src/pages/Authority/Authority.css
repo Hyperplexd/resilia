@@ -18,3 +18,17 @@
 .placeholder__note {
   font-size: 13.5px;
 }
+
+.placeholder__link {
+  margin-top: var(--space-2);
+  background: none;
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-signal);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.placeholder__link:hover {
+  border-color: var(--accent-signal);
+}
