@@ -17,6 +17,9 @@ export type Neighborhood = {
   id: string
   name: string
   boundary: LngLat[]
+  population: number
+  buildings: number
+  vulnerabilityFactor: number
 }
 
 export type Infrastructure = {
@@ -124,6 +127,9 @@ export const NEIGHBORHOODS: Neighborhood[] = [
   {
     id: 'lower-village',
     name: 'Lower Village',
+    population: 1240,
+    buildings: 210,
+    vulnerabilityFactor: 1.1,
     boundary: [
       [-118.6945, 34.0685],
       [-118.6895, 34.0685],
@@ -135,6 +141,9 @@ export const NEIGHBORHOODS: Neighborhood[] = [
   {
     id: 'ridgeline',
     name: 'Ridgeline',
+    population: 920,
+    buildings: 155,
+    vulnerabilityFactor: 1.3,
     boundary: [
       [-118.69, 34.073],
       [-118.681, 34.073],
@@ -146,6 +155,9 @@ export const NEIGHBORHOODS: Neighborhood[] = [
   {
     id: 'town-center',
     name: 'Town Center',
+    population: 1650,
+    buildings: 280,
+    vulnerabilityFactor: 0.9,
     boundary: [
       [-118.703, 34.0655],
       [-118.6965, 34.0655],
@@ -157,6 +169,9 @@ export const NEIGHBORHOODS: Neighborhood[] = [
   {
     id: 'creekside',
     name: 'Creekside',
+    population: 430,
+    buildings: 75,
+    vulnerabilityFactor: 1.0,
     boundary: [
       [-118.698, 34.063],
       [-118.6905, 34.063],

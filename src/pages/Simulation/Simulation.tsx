@@ -1,5 +1,6 @@
 import Shell from '../../components/layout/Shell'
 import CityMap from '../../components/map/CityMap'
+import ImpactCards from '../../components/metrics/ImpactCards'
 import ScenarioPanel from '../../components/scenario/ScenarioPanel'
 import Timeline from '../../components/timeline/Timeline'
 import { useSimulation } from '../../hooks/useSimulation'
@@ -12,6 +13,12 @@ export default function SimulationPage() {
   return (
     <Shell>
       <div className="simulation">
+        <ImpactCards
+          impact={sim.currentFrame.impact}
+          areaHectares={sim.currentFrame.areaHectares}
+          time={sim.currentFrame.time}
+        />
+
         <div className="simulation__body">
           <ScenarioPanel scenario={sim.scenario} onChange={sim.setScenario} />
 
@@ -30,7 +37,10 @@ export default function SimulationPage() {
                 Time since ignition <strong className="data-value">T+{String(sim.currentFrame.time).padStart(2, '0')} min</strong>
               </span>
               <span>
-                Fire area <strong className="data-value">{sim.currentFrame.areaHectares.toFixed(1)} ha</strong>
+                Fire perimeter <strong className="data-value">{sim.currentFrame.impact.perimeterKm.toFixed(1)} km</strong>
+              </span>
+              <span>
+                Spread rate <strong className="data-value">{sim.currentFrame.impact.spreadRateMetersPerMin} m/min</strong>
               </span>
             </div>
           </div>
@@ -51,13 +61,9 @@ export default function SimulationPage() {
         />
 
         <p className="simulation__note">
-          Digital twin — Cedar Ridge. Cyan lines are roads, green zones are
-          vegetation/fuel, dashed outlines are neighborhoods, colored badges
-          are critical infrastructure. Deep red is already-burned area,
-          bright ember is the active fire front, and gray is the smoke
-          plume. Deterministic — the same scenario always produces the same
-          spread. Traffic, evacuation, and impact metrics arrive in later
-          phases.
+          Digital twin — Cedar Ridge. Deterministic impact analytics (population exposure,
+          buildings at risk, road network disruption, and critical infrastructure proximity alerts)
+          update live as time advances. The same scenario inputs always produce the same deterministic outcome.
         </p>
       </div>
     </Shell>

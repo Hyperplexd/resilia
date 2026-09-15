@@ -8,7 +8,7 @@ export const DEFAULT_SCENARIO: ScenarioInput = {
   severity: 'severe',
 }
 
-export const TIME_POINTS = [0, 5, 10, 15, 20, 25, 30]
+export const TIME_POINTS = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
 
 export const WIND_DIRECTIONS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'] as const
 export const LEVELS = ['low', 'moderate', 'high'] as const

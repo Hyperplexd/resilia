@@ -11,6 +11,49 @@ export type ScenarioInput = {
   severity: Severity
 }
 
+export type InfrastructureThreat = {
+  id: string
+  name: string
+  type: 'hospital' | 'school' | 'fireStation' | 'shelter' | 'power'
+  position: LngLat
+  distanceToFireMeters: number
+  status: 'safe' | 'alert' | 'threatened' | 'compromised'
+}
+
+export type RoadImpact = {
+  id: string
+  name: string
+  capacity: number
+  distanceToFireMeters: number
+  status: 'clear' | 'smoke_hazard' | 'threatened' | 'blocked'
+}
+
+export type NeighborhoodImpact = {
+  id: string
+  name: string
+  totalPopulation: number
+  totalBuildings: number
+  exposedResidents: number
+  highRiskResidents: number
+  buildingsAtRisk: number
+  buildingsSeverelyThreatened: number
+  status: 'clear' | 'advisory' | 'warning' | 'evacuate'
+}
+
+export type ImpactMetrics = {
+  exposedResidents: number
+  highRiskResidents: number
+  buildingsAtRisk: number
+  buildingsSeverelyThreatened: number
+  roadsBlockedCount: number
+  roadsAffectedCount: number
+  roads: RoadImpact[]
+  threatenedInfrastructure: InfrastructureThreat[]
+  neighborhoods: NeighborhoodImpact[]
+  spreadRateMetersPerMin: number
+  perimeterKm: number
+}
+
 export type SimulationFrame = {
   /** Minutes since ignition. */
   time: number
@@ -22,4 +65,7 @@ export type SimulationFrame = {
   smokeRing: LngLat[]
   /** Approximate burned area in hectares, for later KPI display. */
   areaHectares: number
+  /** Deterministic impact analytics for this frame */
+  impact: ImpactMetrics
 }
+

@@ -25,7 +25,7 @@
 .simulation__map-wrap {
   flex: 1;
   display: flex;
-  min-height: 0;
+  min-height: 480px;
 }
 
 .simulation__readout {

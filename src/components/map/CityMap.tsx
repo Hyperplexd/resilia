@@ -74,6 +74,7 @@ export default function CityMap({
   const mapRef = useRef<MapLibreMap | null>(null)
   const markerRefs = useRef<Marker[]>([])
   const twinMarkerRefs = useRef<Marker[]>([])
+  const infraMarkerMapRef = useRef<Map<string, Marker>>(new Map())
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -101,7 +102,7 @@ export default function CityMap({
         if (disposed) return
         setupMapLightingAndShadows(map)
         if (showTwin) {
-          addTwinLayers(map, twinMarkerRefs)
+          addTwinLayers(map, twinMarkerRefs, infraMarkerMapRef)
           addFireLayers(map)
         }
         setReady(true)
@@ -145,7 +146,7 @@ export default function CityMap({
   useEffect(() => {
     const map = mapRef.current
     if (!map || !ready || !showTwin) return
-    updateFireLayers(map, fireFrame)
+    updateFireLayers(map, fireFrame, infraMarkerMapRef)
   }, [fireFrame, ready, showTwin])
 
   return (
@@ -338,7 +339,11 @@ function setupMapLightingAndShadows(map: MapLibreMap) {
   }
 }
 
-function addTwinLayers(map: MapLibreMap, twinMarkerRefs: React.MutableRefObject<Marker[]>) {
+function addTwinLayers(
+  map: MapLibreMap,
+  twinMarkerRefs: React.MutableRefObject<Marker[]>,
+  infraMarkerMapRef: React.MutableRefObject<Map<string, Marker>>,
+) {
   // Vegetation
   map.addSource('vegetation', {
     type: 'geojson',
@@ -390,7 +395,7 @@ function addTwinLayers(map: MapLibreMap, twinMarkerRefs: React.MutableRefObject<
       type: 'FeatureCollection',
       features: ROADS.map((r) => ({
         type: 'Feature',
-        properties: { name: r.name, capacity: r.capacity },
+        properties: { id: r.id, name: r.name, capacity: r.capacity, status: 'clear' },
         geometry: { type: 'LineString', coordinates: r.points },
       })),
     },
@@ -400,10 +405,33 @@ function addTwinLayers(map: MapLibreMap, twinMarkerRefs: React.MutableRefObject<
     type: 'line',
     source: 'roads',
     layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: { 'line-color': '#00c3e6', 'line-width': 3.5, 'line-opacity': 0.95 },
+    paint: {
+      'line-color': [
+        'match',
+        ['get', 'status'],
+        'blocked',
+        '#e2483f',
+        'threatened',
+        '#ff9b66',
+        'smoke_hazard',
+        '#e0a83d',
+        '#00c3e6',
+      ],
+      'line-width': [
+        'match',
+        ['get', 'status'],
+        'blocked',
+        4.5,
+        'threatened',
+        4.0,
+        3.5,
+      ],
+      'line-opacity': 0.95,
+    },
   })
 
   // Critical infrastructure
+  infraMarkerMapRef.current.clear()
   INFRASTRUCTURE.forEach((infra) => {
     const el = document.createElement('div')
     el.className = `city-map__infra city-map__infra--${infra.type}`
@@ -413,6 +441,7 @@ function addTwinLayers(map: MapLibreMap, twinMarkerRefs: React.MutableRefObject<
       .setPopup(new Popup({ offset: 14 }).setText(infra.name))
       .addTo(map)
     twinMarkerRefs.current.push(marker)
+    infraMarkerMapRef.current.set(infra.id, marker)
   })
 
   // Ignition point
@@ -471,16 +500,31 @@ function addFireLayers(map: MapLibreMap) {
   })
 }
 
-function updateFireLayers(map: MapLibreMap, frame: SimulationFrame | null | undefined) {
+function updateFireLayers(
+  map: MapLibreMap,
+  frame: SimulationFrame | null | undefined,
+  infraMarkerMapRef: React.MutableRefObject<Map<string, Marker>>,
+) {
   const smokeSource = map.getSource('smoke') as GeoJSONSource | undefined
   const burnedSource = map.getSource('fire-burned') as GeoJSONSource | undefined
   const frontSource = map.getSource('fire-front') as GeoJSONSource | undefined
+  const roadsSource = map.getSource('roads') as GeoJSONSource | undefined
   if (!smokeSource || !burnedSource || !frontSource) return
 
   if (!frame) {
     smokeSource.setData(EMPTY_FEATURE_COLLECTION)
     burnedSource.setData(EMPTY_FEATURE_COLLECTION)
     frontSource.setData(EMPTY_FEATURE_COLLECTION)
+    if (roadsSource) {
+      roadsSource.setData({
+        type: 'FeatureCollection',
+        features: ROADS.map((r) => ({
+          type: 'Feature',
+          properties: { id: r.id, name: r.name, capacity: r.capacity, status: 'clear' },
+          geometry: { type: 'LineString', coordinates: r.points },
+        })),
+      })
+    }
     return
   }
 
@@ -511,4 +555,55 @@ function updateFireLayers(map: MapLibreMap, frame: SimulationFrame | null | unde
       },
     ],
   })
+
+  // Dynamically update road status
+  if (roadsSource && frame.impact?.roads) {
+    const roadStatusMap = new Map(frame.impact.roads.map((r) => [r.id, r.status]))
+    roadsSource.setData({
+      type: 'FeatureCollection',
+      features: ROADS.map((r) => ({
+        type: 'Feature',
+        properties: {
+          id: r.id,
+          name: r.name,
+          capacity: r.capacity,
+          status: roadStatusMap.get(r.id) ?? 'clear',
+        },
+        geometry: { type: 'LineString', coordinates: r.points },
+      })),
+    })
+  }
+
+  // Dynamically update critical infrastructure markers
+  if (frame.impact?.threatenedInfrastructure && infraMarkerMapRef.current) {
+    frame.impact.threatenedInfrastructure.forEach((threat) => {
+      const marker = infraMarkerMapRef.current.get(threat.id)
+      if (!marker) return
+      const el = marker.getElement()
+      el.classList.remove(
+        'city-map__infra--status-safe',
+        'city-map__infra--status-alert',
+        'city-map__infra--status-threatened',
+        'city-map__infra--status-compromised',
+      )
+      el.classList.add(`city-map__infra--status-${threat.status}`)
+
+      const statusTagClass = `impact-status-tag impact-status-tag--${threat.status}`
+      const popupHtml = `
+        <div class="city-map__popup">
+          <div class="city-map__popup-title">${threat.name}</div>
+          <div class="city-map__popup-row">
+            <span>Status:</span>
+            <span class="${statusTagClass}">${threat.status.toUpperCase()}</span>
+          </div>
+          ${
+            threat.status !== 'safe'
+              ? `<div class="city-map__popup-row"><span>Fire proximity:</span><strong>${threat.distanceToFireMeters} m</strong></div>`
+              : '<div class="city-map__popup-row"><span>Fire proximity:</span><span>Perimeter clear</span></div>'
+          }
+        </div>
+      `
+      marker.getPopup().setHTML(popupHtml)
+    })
+  }
 }

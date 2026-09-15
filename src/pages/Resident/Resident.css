@@ -70,8 +70,54 @@
   color: var(--text-secondary);
 }
 
+.resident__assessment {
+  margin-top: var(--space-3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.resident__assessment-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  gap: 6px;
+}
+
+.resident__risk-badge {
+  font-family: var(--font-data);
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+}
+
+.resident__risk--critical {
+  color: var(--status-critical);
+  background: rgba(226, 72, 63, 0.18);
+  border: 1px solid rgba(226, 72, 63, 0.4);
+}
+
+.resident__risk--warning {
+  color: var(--status-warn);
+  background: rgba(224, 168, 61, 0.18);
+  border: 1px solid rgba(224, 168, 61, 0.4);
+}
+
+.resident__risk--ok {
+  color: var(--status-ok);
+  background: rgba(75, 194, 146, 0.18);
+  border: 1px solid rgba(75, 194, 146, 0.4);
+}
+
 .resident__launch {
-  margin-top: var(--space-4);
+  margin-top: var(--space-3);
   width: 100%;
   padding: var(--space-3);
   background: var(--accent-ember);

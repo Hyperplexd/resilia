@@ -160,3 +160,53 @@
   0%, 100% { box-shadow: 0 0 18px 4px rgba(255, 106, 61, 0.6); }
   50% { box-shadow: 0 0 32px 10px rgba(255, 106, 61, 0.9); }
 }
+
+/* Threat-state indicators for critical infrastructure */
+.city-map__infra--status-threatened,
+.city-map__infra--status-compromised {
+  border-color: #ffffff;
+  box-shadow: 0 0 16px 4px rgba(226, 72, 63, 0.85);
+  animation: infra-threat-pulse 1.4s infinite ease-in-out;
+}
+
+.city-map__infra--status-alert {
+  border-color: #ffffff;
+  box-shadow: 0 0 12px 3px rgba(224, 168, 61, 0.75);
+}
+
+@keyframes infra-threat-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 14px 3px rgba(226, 72, 63, 0.8);
+  }
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 24px 8px rgba(226, 72, 63, 1);
+  }
+}
+
+/* Rich map popup */
+.city-map__popup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 150px;
+}
+
+.city-map__popup-title {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 4px;
+}
+
+.city-map__popup-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  gap: 8px;
+}
+
