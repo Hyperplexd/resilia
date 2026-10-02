@@ -2,8 +2,6 @@
 
 **Title:** *"Burn It Down Before It Burns: Rehearsing Disasters Before They Happen"*
 
-I built this around the screens you have working today (login and roles, resident address, 3D twin, fire and smoke simulation). The last two acts need Phases 5-10, so cut or fake-label them if they aren't done.
-
 ---
 
 ## Act 1: The hook (45 sec, no slides, black screen)
