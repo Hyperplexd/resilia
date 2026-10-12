@@ -6,7 +6,7 @@ import type { LngLat, ScenarioInput } from '../simulation/simulationTypes'
 
 export type PlaybackSpeed = 1 | 2 | 5 | 10
 
-const BASE_FRAME_INTERVAL_MS = 2800
+const BASE_FRAME_INTERVAL_MS = 5800
 
 export function useSimulation(ignition: LngLat) {
   const [scenario, setScenarioState] = useState<ScenarioInput>(DEFAULT_SCENARIO)

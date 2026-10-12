@@ -76,6 +76,56 @@ export type NetworkTrafficMetrics = {
   roads: RoadTrafficState[]
 }
 
+export type EvacuationPhase = 'standby' | 'advisory' | 'warning' | 'evacuate' | 'cleared'
+export type EvacuationRouteStatus = 'open' | 'congested' | 'diverted' | 'blocked'
+
+export type NeighborhoodEvacuation = {
+  neighborhoodId: string
+  name: string
+  phase: EvacuationPhase
+  population: number
+  evacuated: number
+  remaining: number
+  /** 0–1 share of residents who have left. */
+  progress: number
+  /** Minutes from this frame until the neighborhood is clear. */
+  clearanceMinutes: number
+  /** Minute the mandatory evacuation order is issued for this scenario. */
+  orderMinute: number
+  safeZoneId: string
+  safeZoneName: string
+  routeLabel: string
+  routeStatus: EvacuationRouteStatus
+  roadIds: string[]
+}
+
+export type SafeZoneState = {
+  id: string
+  name: string
+  kind: 'shelter' | 'school' | 'perimeter'
+  position: LngLat
+  facilityId?: string
+  usable: boolean
+  /** Neighborhoods sent here, including those already cleared into it. */
+  assignedNeighborhoods: number
+  /** Neighborhoods still moving toward this zone. */
+  activeInflow: number
+}
+
+export type EvacuationMetrics = {
+  /** Minutes until the last neighborhood that can still move is clear. */
+  clearanceMinutes: number
+  evacuatedResidents: number
+  remainingResidents: number
+  /** Residents whose every corridor is currently blocked. */
+  strandedResidents: number
+  progress: number
+  activeOrders: number
+  neighborhoods: NeighborhoodEvacuation[]
+  safeZones: SafeZoneState[]
+  safeCorridorRoadIds: string[]
+}
+
 export type SimulationFrame = {
   /** Minutes since ignition. */
   time: number
@@ -91,5 +141,7 @@ export type SimulationFrame = {
   impact: ImpactMetrics
   /** Deterministic network traffic analytics for this frame */
   traffic: NetworkTrafficMetrics
+  /** Deterministic evacuation orders, progress, and clearance for this frame */
+  evacuation: EvacuationMetrics
 }
 

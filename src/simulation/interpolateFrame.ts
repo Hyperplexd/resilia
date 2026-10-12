@@ -1,12 +1,15 @@
 import type {
+  EvacuationMetrics,
   ImpactMetrics,
+  InfrastructureThreat,
   LngLat,
+  NeighborhoodEvacuation,
   NeighborhoodImpact,
   NetworkTrafficMetrics,
   RoadImpact,
   RoadTrafficState,
+  SafeZoneState,
   SimulationFrame,
-  InfrastructureThreat,
 } from './simulationTypes'
 
 function lerp(a: number, b: number, t: number) {
@@ -82,6 +85,41 @@ function blendTrafficRoad(from: RoadTrafficState, to: RoadTrafficState, t: numbe
   }
 }
 
+function blendEvacNeighborhood(from: NeighborhoodEvacuation, to: NeighborhoodEvacuation, t: number): NeighborhoodEvacuation {
+  const snap = t < 0.5 ? from : to
+  return {
+    ...snap,
+    evacuated: Math.round(lerp(from.evacuated, to.evacuated, t)),
+    remaining: Math.round(lerp(from.remaining, to.remaining, t)),
+    progress: lerp(from.progress, to.progress, t),
+    clearanceMinutes: Math.round(lerp(from.clearanceMinutes, to.clearanceMinutes, t)),
+  }
+}
+
+function blendSafeZone(from: SafeZoneState, to: SafeZoneState, t: number): SafeZoneState {
+  const snap = t < 0.5 ? from : to
+  return {
+    ...snap,
+    assignedNeighborhoods: Math.round(lerp(from.assignedNeighborhoods, to.assignedNeighborhoods, t)),
+    activeInflow: Math.round(lerp(from.activeInflow, to.activeInflow, t)),
+  }
+}
+
+function blendEvacuation(from: EvacuationMetrics, to: EvacuationMetrics, t: number): EvacuationMetrics {
+  const snap = t < 0.5 ? from : to
+  return {
+    clearanceMinutes: Math.round(lerp(from.clearanceMinutes, to.clearanceMinutes, t)),
+    evacuatedResidents: Math.round(lerp(from.evacuatedResidents, to.evacuatedResidents, t)),
+    remainingResidents: Math.round(lerp(from.remainingResidents, to.remainingResidents, t)),
+    strandedResidents: Math.round(lerp(from.strandedResidents, to.strandedResidents, t)),
+    progress: lerp(from.progress, to.progress, t),
+    activeOrders: Math.round(lerp(from.activeOrders, to.activeOrders, t)),
+    neighborhoods: blendList(from.neighborhoods, to.neighborhoods, t, blendEvacNeighborhood),
+    safeZones: blendList(from.safeZones, to.safeZones, t, blendSafeZone),
+    safeCorridorRoadIds: snap.safeCorridorRoadIds,
+  }
+}
+
 function blendTraffic(from: NetworkTrafficMetrics, to: NetworkTrafficMetrics, t: number): NetworkTrafficMetrics {
   return {
     networkAverageSpeedKmh: Math.round(lerp(from.networkAverageSpeedKmh, to.networkAverageSpeedKmh, t)),
@@ -120,5 +158,6 @@ export function frameAt(frames: SimulationFrame[], progress: number): Simulation
     areaHectares: lerp(from.areaHectares, to.areaHectares, t),
     impact: blendImpact(from.impact, to.impact, t),
     traffic: blendTraffic(from.traffic, to.traffic, t),
+    evacuation: blendEvacuation(from.evacuation, to.evacuation, t),
   }
 }

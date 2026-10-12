@@ -1,17 +1,38 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Shell from '../../components/layout/Shell'
 import CityMap from '../../components/map/CityMap'
 import { DEMO_ADDRESSES, findAddress, readStoredAddressId, storeAddressId } from '../../data/demoAddresses'
 import { IGNITION_POINT } from '../../data/demoCity'
-import { DEFAULT_SCENARIO } from '../../simulation/scenarios'
+import { DEFAULT_SCENARIO, TIME_POINTS } from '../../simulation/scenarios'
 import { evaluatePointAgainstFire } from '../../simulation/impactModel'
+import { runSimulation } from '../../simulation/simulationEngine'
+import type { NeighborhoodEvacuation } from '../../simulation/simulationTypes'
 import './Resident.css'
+
+function neighborhoodIdFor(label: string): string | undefined {
+  if (label.includes('Ridgeline')) return 'ridgeline'
+  if (label.includes('Town Center')) return 'town-center'
+  if (label.includes('Creekside')) return 'creekside'
+  if (label.includes('Lower Village')) return 'lower-village'
+  return undefined
+}
+
+const ROUTE_STATUS_LABEL: Record<NeighborhoodEvacuation['routeStatus'], string> = {
+  open: 'Available',
+  congested: 'Congested',
+  diverted: 'Detour',
+  blocked: 'Blocked',
+}
 
 export default function ResidentPage() {
   const [selectedId, setSelectedId] = useState<string | null>(readStoredAddressId)
   const selected = selectedId ? findAddress(selectedId) : undefined
   const navigate = useNavigate()
+  const incidentFrame = useMemo(
+    () => runSimulation(IGNITION_POINT.position, DEFAULT_SCENARIO, TIME_POINTS).find((frame) => frame.time === 15),
+    [],
+  )
 
   const chooseAddress = (id: string | null) => {
     setSelectedId(id)
@@ -58,6 +79,21 @@ export default function ResidentPage() {
                 const isMedium = assessment.insideSmoke || assessment.distanceToFireMeters <= 850
                 const status = isHigh ? 'HIGH RISK' : isMedium ? 'ELEVATED ADVISORY' : 'LOW RISK'
                 const statusClass = isHigh ? 'resident__risk--critical' : isMedium ? 'resident__risk--warning' : 'resident__risk--ok'
+                const zone = incidentFrame?.evacuation.neighborhoods.find(
+                  (item) => item.neighborhoodId === neighborhoodIdFor(selected.neighborhood),
+                )
+                const routeClass =
+                  zone?.routeStatus === 'blocked'
+                    ? 'resident__risk--critical'
+                    : zone?.routeStatus === 'open'
+                      ? 'resident__risk--ok'
+                      : 'resident__risk--warning'
+                const phaseClass =
+                  zone?.phase === 'evacuate'
+                    ? 'resident__risk--critical'
+                    : zone?.phase === 'cleared'
+                      ? 'resident__risk--ok'
+                      : 'resident__risk--warning'
 
                 return (
                   <div className="resident__assessment">
@@ -73,6 +109,33 @@ export default function ResidentPage() {
                       <span>Smoke Exposure:</span>
                       <span>{assessment.insideSmoke ? 'Plume engulfment' : 'Air quality clear'}</span>
                     </div>
+                    {zone && (
+                      <>
+                        <div className="resident__assessment-block">
+                          <span>Your evacuation at T+15</span>
+                          <strong className={`resident__risk-badge ${phaseClass}`}>{zone.phase.toUpperCase()}</strong>
+                        </div>
+                        <div className="resident__assessment-block">
+                          <span>Recommended route</span>
+                          <strong>{zone.routeLabel}</strong>
+                        </div>
+                        <div className="resident__assessment-row">
+                          <span>Route status</span>
+                          <strong className={`resident__risk-badge ${routeClass}`}>{ROUTE_STATUS_LABEL[zone.routeStatus]}</strong>
+                        </div>
+                        <div className="resident__assessment-block">
+                          <span>Nearest safe zone</span>
+                          <strong>{zone.safeZoneName}</strong>
+                        </div>
+                        <div className="resident__assessment-row">
+                          <span>Estimated clearance</span>
+                          <strong className="data-value">
+                            {zone.clearanceMinutes}
+                            {zone.clearanceMinutes >= 180 ? '+' : ''} min
+                          </strong>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )
               })()}

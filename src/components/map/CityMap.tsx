@@ -531,9 +531,42 @@ function addTwinLayers(
       type: 'FeatureCollection',
       features: NEIGHBORHOODS.map((n) => ({
         type: 'Feature',
-        properties: { name: n.name },
+        properties: { name: n.name, phase: 'standby' },
         geometry: { type: 'Polygon', coordinates: [n.boundary] },
       })),
+    },
+  })
+  map.addLayer({
+    id: 'neighborhood-fill',
+    type: 'fill',
+    source: 'neighborhoods',
+    paint: {
+      'fill-color': [
+        'match',
+        ['get', 'phase'],
+        'advisory',
+        '#38bdf8',
+        'warning',
+        '#e0a83d',
+        'evacuate',
+        '#e2483f',
+        'cleared',
+        '#4bc292',
+        '#38bdf8',
+      ],
+      'fill-opacity': [
+        'match',
+        ['get', 'phase'],
+        'advisory',
+        0.16,
+        'warning',
+        0.24,
+        'evacuate',
+        0.32,
+        'cleared',
+        0.2,
+        0.04,
+      ],
     },
   })
   map.addLayer({
@@ -550,7 +583,7 @@ function addTwinLayers(
       type: 'FeatureCollection',
       features: ROADS.map((r) => ({
         type: 'Feature',
-        properties: { id: r.id, name: r.name, capacity: r.capacity, status: 'clear' },
+        properties: { id: r.id, name: r.name, capacity: r.capacity, status: 'clear', evacRoute: '' },
         geometry: { type: 'LineString', coordinates: r.points },
       })),
     },
@@ -577,6 +610,20 @@ function addTwinLayers(
         5.5,
       ],
       'line-opacity': 0.85,
+    },
+  })
+
+  // Safe-corridor halo, drawn under the congestion color so the escape route reads as an edge.
+  map.addLayer({
+    id: 'roads-evac',
+    type: 'line',
+    source: 'roads',
+    filter: ['in', ['get', 'evacRoute'], ['literal', ['safe', 'diverted']]],
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['match', ['get', 'evacRoute'], 'diverted', '#e0a83d', '#4bc292'],
+      'line-width': 9,
+      'line-opacity': 0.9,
     },
   })
 
@@ -695,6 +742,70 @@ function addTwinLayers(
           <strong class="data-value">${p.vehicleCount ?? 0} / ${p.capacity ?? 0} veh (${Math.round((p.saturation ?? 0) * 100)}%)</strong>
         </div>
         ${p.isChokePoint ? `<div class="city-map__popup-row" style="color: #ef4444; font-weight: 700; margin-top: 2px;">⚠️ Critical Choke Point</div>` : ''}
+        ${p.evacRoute ? `<div class="city-map__popup-row"><span>Evacuation route:</span><strong>${p.evacRoute === 'diverted' ? 'DETOUR' : 'AVAILABLE'}</strong></div>` : ''}
+      </div>
+    `
+    new Popup({ offset: 12 }).setLngLat(e.lngLat).setHTML(popupHtml).addTo(map)
+  })
+
+  map.addSource('safe-zones', { type: 'geojson', data: EMPTY_FEATURE_COLLECTION })
+  map.addLayer({
+    id: 'safe-zones-glow',
+    type: 'circle',
+    source: 'safe-zones',
+    paint: {
+      'circle-radius': ['case', ['>', ['get', 'inflow'], 0], 16, 11],
+      'circle-color': [
+        'case',
+        ['==', ['get', 'usable'], 'no'],
+        '#ef4444',
+        ['>', ['get', 'inflow'], 0],
+        '#4bc292',
+        '#38bdf8',
+      ],
+      'circle-blur': 0.72,
+      'circle-opacity': 0.55,
+    },
+  })
+  map.addLayer({
+    id: 'safe-zones-core',
+    type: 'circle',
+    source: 'safe-zones',
+    paint: {
+      'circle-radius': ['case', ['>', ['get', 'inflow'], 0], 6.5, 4.5],
+      'circle-color': [
+        'case',
+        ['==', ['get', 'usable'], 'no'],
+        '#7f1d1d',
+        ['>', ['get', 'inflow'], 0],
+        '#4bc292',
+        '#0e7490',
+      ],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#ffffff',
+    },
+  })
+  map.on('mouseenter', 'safe-zones-core', () => {
+    map.getCanvas().style.cursor = 'pointer'
+  })
+  map.on('mouseleave', 'safe-zones-core', () => {
+    map.getCanvas().style.cursor = ''
+  })
+  map.on('click', 'safe-zones-core', (e) => {
+    if (!e.features || !e.features[0]) return
+    const p = e.features[0].properties || {}
+    const open = p.usable === 'yes'
+    const popupHtml = `
+      <div class="city-map__popup">
+        <div class="city-map__popup-title">${p.name}</div>
+        <div class="city-map__popup-row">
+          <span>Safe zone:</span>
+          <strong>${open ? 'OPEN' : 'UNAVAILABLE'}</strong>
+        </div>
+        <div class="city-map__popup-row">
+          <span>Neighborhoods en route:</span>
+          <strong class="data-value">${p.inflow ?? 0}</strong>
+        </div>
       </div>
     `
     new Popup({ offset: 12 }).setLngLat(e.lngLat).setHTML(popupHtml).addTo(map)
@@ -772,6 +883,54 @@ function addFireLayers(map: MapLibreMap) {
   })
 }
 
+function evacRouteFor(roadId: string, frame: SimulationFrame | null | undefined): '' | 'safe' | 'diverted' {
+  const zones = frame?.evacuation?.neighborhoods ?? []
+  let safe = false
+  let diverted = false
+  for (const zone of zones) {
+    if (zone.phase !== 'warning' && zone.phase !== 'evacuate') continue
+    if (zone.routeStatus === 'blocked') continue
+    if (!zone.roadIds.includes(roadId)) continue
+    if (zone.routeStatus === 'diverted') diverted = true
+    else safe = true
+  }
+  if (safe) return 'safe'
+  if (diverted) return 'diverted'
+  return ''
+}
+
+function syncEvacuationLayers(map: MapLibreMap, frame: SimulationFrame | null | undefined) {
+  const neighborhoods = map.getSource('neighborhoods') as GeoJSONSource | undefined
+  if (neighborhoods) {
+    neighborhoods.setData({
+      type: 'FeatureCollection',
+      features: NEIGHBORHOODS.map((n) => ({
+        type: 'Feature' as const,
+        properties: {
+          name: n.name,
+          phase: frame?.evacuation.neighborhoods.find((zone) => zone.neighborhoodId === n.id)?.phase ?? 'standby',
+        },
+        geometry: { type: 'Polygon' as const, coordinates: [n.boundary] },
+      })),
+    })
+  }
+
+  const safeZones = map.getSource('safe-zones') as GeoJSONSource | undefined
+  if (!safeZones) return
+  safeZones.setData({
+    type: 'FeatureCollection',
+    features: (frame?.evacuation.safeZones ?? []).map((zone) => ({
+      type: 'Feature' as const,
+      properties: {
+        name: zone.name,
+        usable: zone.usable ? 'yes' : 'no',
+        inflow: zone.activeInflow,
+      },
+      geometry: { type: 'Point' as const, coordinates: zone.position },
+    })),
+  })
+}
+
 function updateFireLayers(
   map: MapLibreMap,
   frame: SimulationFrame | null | undefined,
@@ -782,6 +941,7 @@ function updateFireLayers(
   const frontSource = map.getSource('fire-front') as GeoJSONSource | undefined
   const roadsSource = map.getSource('roads') as GeoJSONSource | undefined
   if (!smokeSource || !burnedSource || !frontSource) return
+  syncEvacuationLayers(map, frame)
 
   if (!frame) {
     smokeSource.setData(EMPTY_FEATURE_COLLECTION)
@@ -792,7 +952,7 @@ function updateFireLayers(
         type: 'FeatureCollection',
         features: ROADS.map((r) => ({
           type: 'Feature',
-          properties: { id: r.id, name: r.name, capacity: r.capacity, status: 'clear' },
+          properties: { id: r.id, name: r.name, capacity: r.capacity, status: 'clear', evacRoute: '' },
           geometry: { type: 'LineString', coordinates: r.points },
         })),
       })
@@ -852,6 +1012,7 @@ function updateFireLayers(
             vehicleCount: trafficState?.vehicleCount ?? 10,
             saturation: trafficState?.saturationRatio ?? 0.2,
             isChokePoint: trafficState?.isChokePoint ?? false,
+            evacRoute: evacRouteFor(r.id, frame),
           },
           geometry: { type: 'LineString', coordinates: r.points },
         }
@@ -890,6 +1051,7 @@ function updateFireLayers(
       el.classList.add(`city-map__infra--status-${threat.status}`)
 
       const statusTagClass = `impact-status-tag impact-status-tag--${threat.status}`
+      const safeZone = frame.evacuation?.safeZones.find((zone) => zone.facilityId === threat.id)
       const popupHtml = `
         <div class="city-map__popup">
           <div class="city-map__popup-title">${threat.name}</div>
@@ -901,6 +1063,11 @@ function updateFireLayers(
             threat.status !== 'safe'
               ? `<div class="city-map__popup-row"><span>Fire proximity:</span><strong>${threat.distanceToFireMeters} m</strong></div>`
               : '<div class="city-map__popup-row"><span>Fire proximity:</span><span>Perimeter clear</span></div>'
+          }
+          ${
+            safeZone
+              ? `<div class="city-map__popup-row"><span>Evacuation zone:</span><strong>${safeZone.usable ? 'RECEIVING' : 'UNAVAILABLE'}</strong></div>`
+              : ''
           }
         </div>
       `

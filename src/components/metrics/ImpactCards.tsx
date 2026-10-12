@@ -5,15 +5,17 @@ import {
   Route,
   ShieldAlert,
   Flame,
+  Timer,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import type { ImpactMetrics, InfrastructureThreat, NetworkTrafficMetrics } from '../../simulation/simulationTypes'
+import type { EvacuationMetrics, ImpactMetrics, InfrastructureThreat, NetworkTrafficMetrics } from '../../simulation/simulationTypes'
 import './ImpactCards.css'
 
 type ImpactCardsProps = {
   impact: ImpactMetrics
   traffic?: NetworkTrafficMetrics
+  evacuation: EvacuationMetrics
   areaHectares: number
   time: number
 }
@@ -25,7 +27,7 @@ const STATUS_ORDER: Record<InfrastructureThreat['status'], number> = {
   safe: 0,
 }
 
-export default function ImpactCards({ impact, traffic, areaHectares, time }: ImpactCardsProps) {
+export default function ImpactCards({ impact, traffic, evacuation, areaHectares, time }: ImpactCardsProps) {
   const [expanded, setExpanded] = useState(false)
 
   // Find most critical infrastructure
@@ -36,6 +38,13 @@ export default function ImpactCards({ impact, traffic, areaHectares, time }: Imp
   const infraThreatCount = impact.threatenedInfrastructure.filter(
     (i) => i.status === 'threatened' || i.status === 'compromised',
   ).length
+
+  const blockedCorridors = evacuation.neighborhoods.filter((zone) => zone.routeStatus === 'blocked').length
+  const slowCorridors = evacuation.neighborhoods.filter(
+    (zone) => zone.routeStatus === 'congested' || zone.routeStatus === 'diverted',
+  ).length
+  const clearanceCritical = blockedCorridors > 0 || evacuation.clearanceMinutes >= 45
+  const clearanceWarning = !clearanceCritical && (slowCorridors > 0 || evacuation.clearanceMinutes >= 20)
 
   return (
     <div className="impact-container">
@@ -127,6 +136,42 @@ export default function ImpactCards({ impact, traffic, areaHectares, time }: Imp
           </div>
         </div>
 
+        {/* Evacuation clearance */}
+        <div className={`impact-card ${clearanceCritical ? 'impact-card--critical' : clearanceWarning ? 'impact-card--warning' : ''}`}>
+          <div className="impact-card__header">
+            <span className="impact-card__label">
+              <Timer size={14} className="impact-card__icon" />
+              Clearance Time
+            </span>
+            {blockedCorridors > 0 ? (
+              <span className="impact-card__badge impact-card__badge--critical">
+                {blockedCorridors} Blocked
+              </span>
+            ) : evacuation.activeOrders > 0 ? (
+              <span className="impact-card__badge impact-card__badge--warning">
+                {evacuation.activeOrders} Orders
+              </span>
+            ) : (
+              <span className="impact-card__badge impact-card__badge--ok">
+                {Math.round(evacuation.progress * 100)}% out
+              </span>
+            )}
+          </div>
+          <div className="impact-card__body">
+            <span className="impact-card__value data-value">
+              {evacuation.clearanceMinutes}
+              {evacuation.clearanceMinutes >= 180 ? '+' : ''} <small>min</small>
+            </span>
+            <span className="impact-card__subtext">
+              {evacuation.remainingResidents === 0
+                ? 'All neighborhoods clear'
+                : evacuation.strandedResidents > 0
+                  ? `${evacuation.strandedResidents.toLocaleString()} stranded on closed roads`
+                  : `${evacuation.remainingResidents.toLocaleString()} residents still to move`}
+            </span>
+          </div>
+        </div>
+
         {/* Critical Infrastructure Card */}
         <div className={`impact-card ${highestInfraThreat?.status === 'compromised' || highestInfraThreat?.status === 'threatened' ? 'impact-card--critical' : highestInfraThreat?.status === 'alert' ? 'impact-card--warning' : ''}`}>
           <div className="impact-card__header">
@@ -183,7 +228,7 @@ export default function ImpactCards({ impact, traffic, areaHectares, time }: Imp
           className={`impact-drawer__toggle-btn ${expanded ? 'impact-drawer__toggle-btn--active' : ''}`}
           onClick={() => setExpanded(!expanded)}
         >
-          <span>{expanded ? 'Hide impact analysis breakdown' : 'View detailed impact breakdown (facilities, roads, neighborhoods)'}</span>
+          <span>{expanded ? 'Hide impact analysis breakdown' : 'View detailed impact breakdown (facilities, roads, evacuation, neighborhoods)'}</span>
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
@@ -258,6 +303,50 @@ export default function ImpactCards({ impact, traffic, areaHectares, time }: Imp
                             Speed: <strong>{roadTraffic?.speedKmh ?? 50} km/h</strong> · Load: {roadTraffic?.vehicleCount ?? 0}/{road.capacity} veh ({saturationPct}%)
                           </span>
                           <span>{road.status === 'blocked' ? 'Impassable' : road.distanceToFireMeters > 0 ? `${road.distanceToFireMeters}m to fire` : 'Clear'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Evacuation orders */}
+            <div className="impact-drawer__panel">
+              <h4 className="impact-drawer__heading">
+                <Timer size={14} /> Evacuation Orders
+              </h4>
+              <div className="impact-drawer__list">
+                {evacuation.neighborhoods.map((zone) => {
+                  const percent = Math.min(100, Math.round(zone.progress * 100))
+                  return (
+                    <div key={zone.neighborhoodId} className={`impact-drawer__item impact-drawer__item--${zone.phase}`}>
+                      <div className="impact-drawer__item-info" style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <span className="impact-drawer__item-name">{zone.name}</span>
+                          <span className={`impact-status-tag impact-status-tag--${zone.phase}`}>{zone.phase}</span>
+                        </div>
+                        <div className="impact-bar-wrap">
+                          <div
+                            className={`impact-bar ${zone.phase === 'cleared' ? 'impact-bar--ok' : zone.phase === 'evacuate' ? 'impact-bar--alert' : ''}`}
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        <div className="impact-drawer__item-detail" style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                          <span>
+                            {percent}% cleared · {zone.remaining.toLocaleString()} left
+                          </span>
+                          <span>
+                            {zone.clearanceMinutes}
+                            {zone.clearanceMinutes >= 180 ? '+' : ''} min
+                          </span>
+                        </div>
+                        <div className="impact-drawer__item-detail">
+                          Order T+{String(zone.orderMinute).padStart(2, '0')} · {zone.routeLabel}
+                        </div>
+                        <div className="impact-drawer__item-detail" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <span>{zone.safeZoneName}</span>
+                          <span className={`impact-status-tag impact-status-tag--${zone.routeStatus}`}>{zone.routeStatus}</span>
                         </div>
                       </div>
                     </div>

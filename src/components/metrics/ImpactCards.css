@@ -229,6 +229,11 @@
   background: rgba(226, 72, 63, 0.06);
 }
 
+.impact-drawer__item--cleared {
+  border-color: rgba(75, 194, 146, 0.45);
+  background: rgba(75, 194, 146, 0.06);
+}
+
 .impact-drawer__item--threatened,
 .impact-drawer__item--warning {
   border-color: rgba(224, 168, 61, 0.4);
@@ -268,6 +273,8 @@
 
 .impact-status-tag--safe,
 .impact-status-tag--clear,
+.impact-status-tag--cleared,
+.impact-status-tag--open,
 .impact-status-tag--free_flow {
   color: var(--status-ok);
   border-color: rgba(75, 194, 146, 0.4);
@@ -276,6 +283,7 @@
 
 .impact-status-tag--alert,
 .impact-status-tag--advisory,
+.impact-status-tag--diverted,
 .impact-status-tag--smoke_hazard,
 .impact-status-tag--moderate {
   color: var(--status-warn);
@@ -285,6 +293,7 @@
 
 .impact-status-tag--threatened,
 .impact-status-tag--warning,
+.impact-status-tag--congested,
 .impact-status-tag--heavy {
   color: #ff9b66;
   border-color: rgba(255, 155, 102, 0.5);
@@ -320,4 +329,8 @@
 
 .impact-bar--alert {
   background: var(--accent-ember);
+}
+
+.impact-bar--ok {
+  background: var(--status-ok);
 }

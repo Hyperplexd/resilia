@@ -39,6 +39,7 @@ export default function AuthorityPage() {
         <ImpactCards
           impact={activeFrame.impact}
           traffic={activeFrame.traffic}
+          evacuation={activeFrame.evacuation}
           areaHectares={activeFrame.areaHectares}
           time={activeFrame.time}
         />
@@ -66,6 +67,15 @@ export default function AuthorityPage() {
                 <span className="authority-briefing__label">Evacuation Traffic</span>
                 <strong className="authority-briefing__value text-warn">
                   {activeFrame.traffic.networkAverageSpeedKmh} km/h avg · {activeFrame.traffic.chokePointsCount} active bottlenecks ({activeFrame.traffic.totalVehiclesEnRoute} vehicles en route)
+                </strong>
+              </div>
+              <div className="authority-briefing__item">
+                <span className="authority-briefing__label">Evacuation Clearance</span>
+                <strong className={`authority-briefing__value ${activeFrame.evacuation.clearanceMinutes >= 40 ? 'text-critical' : 'text-warn'}`}>
+                  {activeFrame.evacuation.clearanceMinutes} min · {activeFrame.evacuation.remainingResidents.toLocaleString()} residents still to move · {activeFrame.evacuation.activeOrders} active orders
+                  {activeFrame.evacuation.strandedResidents > 0
+                    ? ` · ${activeFrame.evacuation.strandedResidents.toLocaleString()} stranded`
+                    : ''}
                 </strong>
               </div>
               <div className="authority-briefing__item">

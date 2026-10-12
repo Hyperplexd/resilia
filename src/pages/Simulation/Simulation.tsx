@@ -54,6 +54,7 @@ export default function SimulationPage() {
         <ImpactCards
           impact={sim.currentFrame.impact}
           traffic={sim.currentFrame.traffic}
+          evacuation={sim.currentFrame.evacuation}
           areaHectares={sim.currentFrame.areaHectares}
           time={Math.round(sim.currentFrame.time)}
         />
@@ -93,6 +94,12 @@ export default function SimulationPage() {
               <span>
                 Throughput <strong className="data-value">{sim.currentFrame.traffic?.activeEvacuationThroughput ?? 0} veh/min</strong>
               </span>
+              <span>
+                Clearance <strong className="data-value">{sim.currentFrame.evacuation.clearanceMinutes}{sim.currentFrame.evacuation.clearanceMinutes >= 180 ? '+' : ''} min</strong>
+              </span>
+              <span>
+                Evacuated <strong className="data-value">{Math.round(sim.currentFrame.evacuation.progress * 100)}%</strong>
+              </span>
             </div>
           </div>
         </div>
@@ -112,9 +119,8 @@ export default function SimulationPage() {
         />
 
         <p className="simulation__note">
-          Digital twin — Cedar Ridge. Deterministic impact analytics (population exposure,
-          buildings at risk, road network disruption, and critical infrastructure proximity alerts)
-          update live as time advances. The same scenario inputs always produce the same deterministic outcome.
+          Digital twin — Cedar Ridge. Evacuation orders, clearance time, and safe corridors
+          update with the fire and the road network. The same scenario inputs always produce the same deterministic outcome.
         </p>
       </div>
     </Shell>

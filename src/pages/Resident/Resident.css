@@ -7,7 +7,9 @@
 }
 
 .resident__panel {
-  width: 280px;
+  width: 320px;
+  max-height: 100%;
+  overflow: auto;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -88,6 +90,20 @@
   font-size: 11.5px;
   color: var(--text-secondary);
   gap: 6px;
+}
+
+.resident__assessment-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+}
+
+.resident__assessment-block strong {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .resident__risk-badge {

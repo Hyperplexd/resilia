@@ -47,12 +47,17 @@ npm run lint
 ### 4. Λευκά / εκτοξευμένα (extruded) 3D πολύγωνα
 * **Τι είναι:** Τα πραγματικά **3D κτίρια** της περιοχής (από τα vector tiles), με ρεαλιστικές σκιές στο έδαφος.
 
+### 5. Ζώνες εκκένωσης, διάδρομοι & safe zones
+* **Γειτονιές:** ημιδιαφανές γέμισμα ανά φάση εντολής (γαλάζιο advisory, κεχριμπαρί warning, ember evacuate, πράσινο cleared).
+* **Πράσινο/κεχριμπαρί halo** γύρω από τους δρόμους που είναι ο ενεργός διάδρομος διαφυγής (amber όταν η διαδρομή είναι detour).
+* **Κύκλοι safe zone:** Central Avenue Shelter, Cedar Ridge Elementary, South Perimeter Gate. Πράσινο όταν δέχονται κόσμο, κόκκινο όταν η εγκατάσταση δεν είναι πια ασφαλής.
+
 ---
 
 
 ## Κατάσταση έργου (state summary)
 
-**Τρέχουσα έκδοση:** Phase 6 από τις 11 του πλάνου έχει ολοκληρωθεί και
+**Τρέχουσα έκδοση:** Phase 7 από τις 11 του πλάνου έχει ολοκληρωθεί και
 επαληθευτεί (`npm run build` + `npm run lint` καθαρά, 0 σφάλματα).
 
 **Τι δουλεύει σήμερα:**
@@ -75,6 +80,11 @@ npm run lint
   - Δυναμικός χρωματισμός οδικού δικτύου στο χάρτη ανάλογα με την κατάσταση
     (κόκκινο για blocked, πορτοκαλί για smoke hazard/threatened, κυανό για clear).
   - Alert badges & rich popups με πραγματική απόσταση για τις 5 κρίσιμες εγκαταστάσεις.
+- **Evacuation (Phase 7):** phased orders ανά γειτονιά, clearance time που
+  αλλάζει με τη φωτιά και το οδικό δίκτυο, safe zones (shelter, σχολείο,
+  South Perimeter Gate) και προτεινόμενος διάδρομος με detour όταν κλείνει
+  η κύρια διαδρομή. Ο χάρτης χρωματίζει τη φάση εντολής και τον διάδρομο.
+  Ο κάτοικος βλέπει διαδρομή, safe zone και clearance για το incident στο T+15.
 
 **Βασικές αποφάσεις σχεδίασης:**
 - Καμία πραγματική γεωκωδικοποίηση, backend, auth provider ή database —
@@ -95,9 +105,7 @@ npm run lint
 - Σκοτεινό "command-center" visual language (near-black βάση, ember/cyan
   accents), IBM Plex Mono για αριθμητικές τιμές/δεδομένα.
 
-**Τι μένει (Phases 7-11):**
-- **Phase 7 — Evacuation:** ζώνες/πρόοδος εκκένωσης, εκτιμώμενος χρόνος
-  εκκαθάρισης, ασφαλείς διαδρομές.
+**Τι μένει (Phases 8-11):**
 - **Phase 8 — Emergency Response:** ανάθεση/κίνηση μονάδων έκτακτης ανάγκης.
 - **Phase 9 — Scenario Save:** αποθήκευση/επαναφόρτωση σεναρίων σε
   `localStorage`.
@@ -210,17 +218,38 @@ src/
     corridor saturation meters in the breakdown drawer.
   - Operational readout and briefing updated in both `Simulation.tsx` and `Authority.tsx`.
 
-Next: **Phase 7 — Evacuation** (evacuation zones, phased evacuation orders, clearance time estimates, safe corridors).
+- **Phase 7 — Evacuation (done).** `src/simulation/evacuationModel.ts` advances a
+  deterministic evacuation on top of each frame's impact and traffic:
+  - Four phased orders (Ridgeline, Lower Village, Creekside, Town Center). Severe,
+    dry, and high-wind scenarios pull the order clock earlier.
+  - Residents leave only after the warning window opens. Progress accumulates
+    forward across frames, so a later traffic jam slows the rate without
+    sending people back home.
+  - Clearance time is how long the neighborhoods that can still move need.
+    A closed corridor strands whoever is left on it and is reported separately;
+    that stranded time becomes the city number only when every remaining route is closed.
+  - Each neighborhood has a primary safe zone and corridor, then a fallback when
+    that shelter is threatened or the road is blocked (detour to the South Perimeter
+    Gate along Hollow Creek Lane).
+  - `CityMap` paints neighborhood phase fills, a corridor halo on the recommended
+    roads, and safe-zone markers. `ImpactCards`, the authority briefing, and the
+    resident address panel all read the same frame metrics.
+
+Next: **Phase 8 — Emergency Response** (deployable units, route, ETA, target selection).
 
 ## Known limitations
 
 - No real geocoding, GIS, ML, or emergency-service integration — everything
   is local, deterministic demo data by design.
-- No evacuation clearance zone automation, emergency-response dispatch,
-  or scenario save/compare yet — that's Phases 7-10.
+- No emergency-response dispatch or scenario save/compare yet — that's Phases 8-10.
 
 ## Change Log
 
 ### 2026-10-12 — Road network follows the basemap
 
 - The five Cedar Ridge corridors in `src/data/demoCity.ts` now trace the real street centerlines on the map (Piuma Road, Cold Canyon Road, Malibu Canyon Road, and Crater Camp Drive) instead of straight chords across the terrain. Traffic color, vehicle pulses, and bottleneck markers sit on those streets. The ignition point sits on the ridgeline forest edge beside Cold Canyon so the fire still reaches the ridge road.
+
+### 2026-10-12 — Evacuation orders and clearance
+
+- Added a deterministic evacuation model: phased neighborhood orders, clearance time, safe zones, and fallback corridors that respond to fire threat and road congestion.
+- The digital twin now shows order phase on each neighborhood, the active escape corridor, and whether a shelter is still receiving people.
