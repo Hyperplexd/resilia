@@ -8,11 +8,12 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
-import type { ImpactMetrics, InfrastructureThreat } from '../../simulation/simulationTypes'
+import type { ImpactMetrics, InfrastructureThreat, NetworkTrafficMetrics } from '../../simulation/simulationTypes'
 import './ImpactCards.css'
 
 type ImpactCardsProps = {
   impact: ImpactMetrics
+  traffic?: NetworkTrafficMetrics
   areaHectares: number
   time: number
 }
@@ -24,7 +25,7 @@ const STATUS_ORDER: Record<InfrastructureThreat['status'], number> = {
   safe: 0,
 }
 
-export default function ImpactCards({ impact, areaHectares, time }: ImpactCardsProps) {
+export default function ImpactCards({ impact, traffic, areaHectares, time }: ImpactCardsProps) {
   const [expanded, setExpanded] = useState(false)
 
   // Find most critical infrastructure
@@ -85,33 +86,43 @@ export default function ImpactCards({ impact, areaHectares, time }: ImpactCardsP
           </div>
         </div>
 
-        {/* Roads Card */}
-        <div className={`impact-card ${impact.roadsBlockedCount > 0 ? 'impact-card--critical' : impact.roadsAffectedCount > 0 ? 'impact-card--warning' : ''}`}>
+        {/* Roads & Traffic Flow Card */}
+        <div className={`impact-card ${traffic && traffic.chokePointsCount > 0 ? 'impact-card--critical' : impact.roadsBlockedCount > 0 ? 'impact-card--critical' : impact.roadsAffectedCount > 0 ? 'impact-card--warning' : ''}`}>
           <div className="impact-card__header">
             <span className="impact-card__label">
               <Route size={14} className="impact-card__icon" />
-              Road Network
+              Evacuation Traffic
             </span>
-            {impact.roadsBlockedCount > 0 ? (
+            {traffic && traffic.chokePointsCount > 0 ? (
+              <span className="impact-card__badge impact-card__badge--critical">
+                {traffic.chokePointsCount} Bottlenecks
+              </span>
+            ) : impact.roadsBlockedCount > 0 ? (
               <span className="impact-card__badge impact-card__badge--critical">
                 {impact.roadsBlockedCount} Blocked
               </span>
-            ) : impact.roadsAffectedCount > 0 ? (
-              <span className="impact-card__badge impact-card__badge--warning">
-                {impact.roadsAffectedCount} Threatened
+            ) : traffic ? (
+              <span className="impact-card__badge impact-card__badge--ok">
+                {traffic.activeEvacuationThroughput} veh/min
               </span>
             ) : null}
           </div>
           <div className="impact-card__body">
             <span className="impact-card__value data-value">
-              {impact.roadsBlockedCount > 0
-                ? `${impact.roadsBlockedCount} Blocked`
-                : impact.roadsAffectedCount > 0
-                  ? `${impact.roadsAffectedCount} Degraded`
-                  : 'All Clear'}
+              {traffic ? (
+                <>
+                  {traffic.networkAverageSpeedKmh} <small>km/h</small>
+                </>
+              ) : impact.roadsBlockedCount > 0 ? (
+                `${impact.roadsBlockedCount} Blocked`
+              ) : (
+                'All Clear'
+              )}
             </span>
             <span className="impact-card__subtext">
-              {impact.roadsAffectedCount} of {impact.roads.length} routes affected
+              {traffic
+                ? `Avg network speed · ${traffic.totalVehiclesEnRoute} vehicles active`
+                : `${impact.roadsAffectedCount} of ${impact.roads.length} routes affected`}
             </span>
           </div>
         </div>
@@ -205,25 +216,53 @@ export default function ImpactCards({ impact, areaHectares, time }: ImpactCardsP
               </div>
             </div>
 
-            {/* Roads Disruption Section */}
+            {/* Roads & Evacuation Traffic Section */}
             <div className="impact-drawer__panel">
               <h4 className="impact-drawer__heading">
-                <Route size={14} /> Road Disruption Status
+                <Route size={14} /> Evacuation Corridors & Congestion
               </h4>
               <div className="impact-drawer__list">
-                {impact.roads.map((road) => (
-                  <div key={road.id} className={`impact-drawer__item impact-drawer__item--${road.status}`}>
-                    <div className="impact-drawer__item-info">
-                      <span className="impact-drawer__item-name">{road.name}</span>
-                      <span className="impact-drawer__item-detail">
-                        Capacity: {road.capacity} veh/min · {road.status === 'blocked' ? 'Road impassable' : road.distanceToFireMeters > 0 ? `Proximity: ${road.distanceToFireMeters}m` : 'Clear'}
-                      </span>
+                {impact.roads.map((road) => {
+                  const roadTraffic = traffic?.roads.find((r) => r.roadId === road.id)
+                  const saturationPct = Math.round((roadTraffic?.saturationRatio ?? 0) * 100)
+                  const congestion = roadTraffic?.congestionLevel ?? (road.status === 'blocked' ? 'closed' : 'free_flow')
+
+                  return (
+                    <div key={road.id} className={`impact-drawer__item impact-drawer__item--${road.status}`}>
+                      <div className="impact-drawer__item-info" style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                          <span className="impact-drawer__item-name">{road.name}</span>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            {roadTraffic?.isChokePoint && (
+                              <span className="impact-status-tag impact-status-tag--blocked" style={{ fontWeight: 700 }}>
+                                BOTTLENECK
+                              </span>
+                            )}
+                            <span className={`impact-status-tag impact-status-tag--${congestion}`}>
+                              {congestion.replace('_', ' ')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {roadTraffic && (
+                          <div className="impact-bar-wrap">
+                            <div
+                              className={`impact-bar ${saturationPct >= 100 ? 'impact-bar--alert' : ''}`}
+                              style={{ width: `${Math.min(100, saturationPct)}%` }}
+                            />
+                          </div>
+                        )}
+
+                        <div className="impact-drawer__item-detail" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
+                          <span>
+                            Speed: <strong>{roadTraffic?.speedKmh ?? 50} km/h</strong> · Load: {roadTraffic?.vehicleCount ?? 0}/{road.capacity} veh ({saturationPct}%)
+                          </span>
+                          <span>{road.status === 'blocked' ? 'Impassable' : road.distanceToFireMeters > 0 ? `${road.distanceToFireMeters}m to fire` : 'Clear'}</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className={`impact-status-tag impact-status-tag--${road.status}`}>
-                      {road.status.replace('_', ' ')}
-                    </span>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 

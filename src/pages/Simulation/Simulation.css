@@ -7,6 +7,39 @@
   min-height: 0;
 }
 
+.simulation__origin {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.simulation__origin strong {
+  color: var(--text-primary);
+}
+
+.simulation__origin-detail {
+  color: var(--text-muted);
+}
+
+.simulation__change-address {
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-subtle);
+  color: var(--accent-signal);
+  font-family: var(--font-data);
+  font-size: 12.5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.simulation__change-address:hover {
+  border-color: var(--accent-signal);
+}
+
 .simulation__body {
   flex: 1;
   display: flex;

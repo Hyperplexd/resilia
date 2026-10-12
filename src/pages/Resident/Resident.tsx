@@ -2,16 +2,21 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Shell from '../../components/layout/Shell'
 import CityMap from '../../components/map/CityMap'
-import { DEMO_ADDRESSES, findAddress } from '../../data/demoAddresses'
+import { DEMO_ADDRESSES, findAddress, readStoredAddressId, storeAddressId } from '../../data/demoAddresses'
 import { IGNITION_POINT } from '../../data/demoCity'
 import { DEFAULT_SCENARIO } from '../../simulation/scenarios'
 import { evaluatePointAgainstFire } from '../../simulation/impactModel'
 import './Resident.css'
 
 export default function ResidentPage() {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(readStoredAddressId)
   const selected = selectedId ? findAddress(selectedId) : undefined
   const navigate = useNavigate()
+
+  const chooseAddress = (id: string | null) => {
+    setSelectedId(id)
+    storeAddressId(id)
+  }
 
   return (
     <Shell>
@@ -24,7 +29,7 @@ export default function ResidentPage() {
             id="address-select"
             className="resident__select"
             value={selectedId ?? ''}
-            onChange={(e) => setSelectedId(e.target.value || null)}
+            onChange={(e) => chooseAddress(e.target.value || null)}
           >
             <option value="" disabled>
               Choose a demo address&hellip;
@@ -72,7 +77,13 @@ export default function ResidentPage() {
                 )
               })()}
 
-              <button className="resident__launch" onClick={() => navigate('/simulation')}>
+              <button
+                className="resident__launch"
+                onClick={() => {
+                  storeAddressId(selected.id)
+                  navigate(`/simulation?address=${encodeURIComponent(selected.id)}`)
+                }}
+              >
                 What happens if wildfire starts here?
               </button>
             </div>

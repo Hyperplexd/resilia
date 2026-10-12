@@ -27,6 +27,12 @@ export type MapMarker = {
   label: string
 }
 
+export type IgnitionFocus = {
+  lat: number
+  lng: number
+  label: string
+}
+
 type CityMapProps = {
   center: { lat: number; lng: number }
   zoom?: number
@@ -36,6 +42,8 @@ type CityMapProps = {
   showTwin?: boolean
   /** Current simulation frame — when provided (with showTwin), renders fire + smoke polygons. */
   fireFrame?: SimulationFrame | null
+  /** Moves the ignition marker. Defaults to the ridgeline forest-edge point. */
+  ignition?: IgnitionFocus
 }
 
 const INFRA_LABEL: Record<Infrastructure['type'], string> = {
@@ -62,6 +70,58 @@ async function getArchitecturalStyle(): Promise<StyleSpecification | string> {
   }
 }
 
+/** One pulse per ~0.85 km so longer real streets don't look empty. */
+function vehiclePulseCount(points: [number, number][]): number {
+  let meters = 0
+  for (let i = 1; i < points.length; i++) {
+    const dx = (points[i][0] - points[i - 1][0]) * 92_200
+    const dy = (points[i][1] - points[i - 1][1]) * 111_320
+    meters += Math.hypot(dx, dy)
+  }
+  return Math.max(3, Math.round(meters / 850))
+}
+
+function interpolateAlongRoad(points: [number, number][], progress: number): [number, number] {
+  if (points.length === 0) return [0, 0]
+  if (points.length === 1 || progress <= 0) return points[0]
+  if (progress >= 1) return points[points.length - 1]
+
+  let totalLength = 0
+  const segLengths: number[] = []
+  for (let i = 0; i < points.length - 1; i++) {
+    const dx = points[i + 1][0] - points[i][0]
+    const dy = points[i + 1][1] - points[i][1]
+    const dist = Math.hypot(dx, dy)
+    segLengths.push(dist)
+    totalLength += dist
+  }
+  if (totalLength === 0) return points[0]
+
+  const targetDist = progress * totalLength
+  let accumulated = 0
+  for (let i = 0; i < segLengths.length; i++) {
+    if (accumulated + segLengths[i] >= targetDist) {
+      const segFraction = (targetDist - accumulated) / (segLengths[i] || 1)
+      const p1 = points[i]
+      const p2 = points[i + 1]
+      return [
+        p1[0] + (p2[0] - p1[0]) * segFraction,
+        p1[1] + (p2[1] - p1[1]) * segFraction,
+      ]
+    }
+    accumulated += segLengths[i]
+  }
+  return points[points.length - 1]
+}
+
+const CONGESTION_COLORS: Record<string, string> = {
+  free_flow: '#38bdf8',
+  moderate: '#fbbf24',
+  heavy: '#fb923c',
+  standstill: '#f87171',
+  closed: '#ef4444',
+}
+
 export default function CityMap({
   center,
   zoom = 14.5,
@@ -69,13 +129,98 @@ export default function CityMap({
   markers = [],
   showTwin = false,
   fireFrame = null,
+  ignition,
 }: CityMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
   const markerRefs = useRef<Marker[]>([])
   const twinMarkerRefs = useRef<Marker[]>([])
   const infraMarkerMapRef = useRef<Map<string, Marker>>(new Map())
+  const ignitionMarkerRef = useRef<Marker | null>(null)
   const [ready, setReady] = useState(false)
+
+  const ignitionFocus: IgnitionFocus = ignition ?? {
+    lng: IGNITION_POINT.position[0],
+    lat: IGNITION_POINT.position[1],
+    label: IGNITION_POINT.label,
+  }
+  const ignitionFocusRef = useRef(ignitionFocus)
+  ignitionFocusRef.current = ignitionFocus
+
+  const fireFrameRef = useRef(fireFrame)
+  useEffect(() => {
+    fireFrameRef.current = fireFrame
+  }, [fireFrame])
+
+  const trafficParticlesRef = useRef<{ roadId: string; offset: number }[]>([])
+  const lastTimeRef = useRef<number>(performance.now())
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready || !showTwin) return
+
+    let animId: number
+    if (trafficParticlesRef.current.length === 0) {
+      trafficParticlesRef.current = ROADS.flatMap((r) => {
+        const count = vehiclePulseCount(r.points)
+        return Array.from({ length: count }, (_, i) => ({
+          roadId: r.id,
+          offset: (i + 0.35) / count,
+        }))
+      })
+    }
+    const particles = trafficParticlesRef.current
+    const roadMap = new Map(ROADS.map((r) => [r.id, r]))
+
+    const animate = (timeNow: number) => {
+      const dt = Math.min(100, timeNow - lastTimeRef.current)
+      lastTimeRef.current = timeNow
+
+      const trafficSource = map.getSource('traffic-pulses') as GeoJSONSource | undefined
+      if (trafficSource && fireFrameRef.current?.traffic) {
+        const currentTraffic = fireFrameRef.current.traffic
+        const trafficByRoad = new Map(currentTraffic.roads.map((r) => [r.roadId, r]))
+
+        const features: any[] = []
+
+        for (const p of particles) {
+          const road = roadMap.get(p.roadId)
+          if (!road) continue
+
+          const state = trafficByRoad.get(p.roadId)
+          const speed = state ? state.speedKmh : 50
+          const congestion = state ? state.congestionLevel : 'free_flow'
+
+          if (state?.flowDirection !== 'blocked' && speed > 0) {
+            const speedFactor = (speed / 50) * (0.00025 / 3) * dt
+            p.offset = (p.offset + speedFactor) % 1
+            const coords = interpolateAlongRoad(road.points, p.offset)
+            features.push({
+              type: 'Feature',
+              properties: {
+                roadId: road.id,
+                color: CONGESTION_COLORS[congestion] ?? '#38bdf8',
+              },
+              geometry: {
+                type: 'Point',
+                coordinates: coords,
+              },
+            })
+          }
+        }
+
+        trafficSource.setData({
+          type: 'FeatureCollection',
+          features,
+        })
+      }
+
+      animId = requestAnimationFrame(animate)
+    }
+
+    animId = requestAnimationFrame(animate)
+    return () => cancelAnimationFrame(animId)
+  }, [ready, showTwin])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -102,7 +247,7 @@ export default function CityMap({
         if (disposed) return
         setupMapLightingAndShadows(map)
         if (showTwin) {
-          addTwinLayers(map, twinMarkerRefs, infraMarkerMapRef)
+          addTwinLayers(map, twinMarkerRefs, infraMarkerMapRef, ignitionFocusRef, ignitionMarkerRef)
           addFireLayers(map)
         }
         setReady(true)
@@ -114,6 +259,7 @@ export default function CityMap({
     return () => {
       disposed = true
       currentTwinMarkers.forEach((m) => m.remove())
+      ignitionMarkerRef.current = null
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
@@ -125,9 +271,9 @@ export default function CityMap({
 
   useEffect(() => {
     const map = mapRef.current
-    if (!map) return
+    if (!map || !ready) return
     map.flyTo({ center: [center.lng, center.lat], zoom, pitch, bearing: -14, essential: true })
-  }, [center.lat, center.lng, zoom, pitch])
+  }, [ready, center.lat, center.lng, zoom, pitch])
 
   useEffect(() => {
     const map = mapRef.current
@@ -148,6 +294,13 @@ export default function CityMap({
     if (!map || !ready || !showTwin) return
     updateFireLayers(map, fireFrame, infraMarkerMapRef)
   }, [fireFrame, ready, showTwin])
+
+  useEffect(() => {
+    const marker = ignitionMarkerRef.current
+    if (!marker || !ready) return
+    marker.setLngLat([ignitionFocus.lng, ignitionFocus.lat])
+    marker.getPopup()?.setText(ignitionFocus.label)
+  }, [ready, ignitionFocus.lng, ignitionFocus.lat, ignitionFocus.label])
 
   return (
     <div className="city-map">
@@ -343,6 +496,8 @@ function addTwinLayers(
   map: MapLibreMap,
   twinMarkerRefs: React.MutableRefObject<Marker[]>,
   infraMarkerMapRef: React.MutableRefObject<Map<string, Marker>>,
+  ignitionFocusRef: React.MutableRefObject<IgnitionFocus>,
+  ignitionMarkerRef: React.MutableRefObject<Marker | null>,
 ) {
   // Vegetation
   map.addSource('vegetation', {
@@ -400,6 +555,32 @@ function addTwinLayers(
       })),
     },
   })
+  // Roads casing (dark contrast backdrop)
+  map.addLayer({
+    id: 'roads-casing',
+    type: 'line',
+    source: 'roads',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#0a101b',
+      'line-width': [
+        'match',
+        ['get', 'congestion'],
+        'standstill',
+        8.0,
+        'heavy',
+        7.5,
+        'closed',
+        7.5,
+        'moderate',
+        6.5,
+        5.5,
+      ],
+      'line-opacity': 0.85,
+    },
+  })
+
+  // Roads line (dynamic congestion color)
   map.addLayer({
     id: 'roads-line',
     type: 'line',
@@ -408,26 +589,115 @@ function addTwinLayers(
     paint: {
       'line-color': [
         'match',
-        ['get', 'status'],
-        'blocked',
-        '#e2483f',
-        'threatened',
-        '#ff9b66',
-        'smoke_hazard',
-        '#e0a83d',
+        ['get', 'congestion'],
+        'closed',
+        '#ef4444',
+        'standstill',
+        '#f87171',
+        'heavy',
+        '#f97316',
+        'moderate',
+        '#fbbf24',
         '#00c3e6',
       ],
       'line-width': [
         'match',
-        ['get', 'status'],
-        'blocked',
-        4.5,
-        'threatened',
-        4.0,
-        3.5,
+        ['get', 'congestion'],
+        'standstill',
+        5.2,
+        'heavy',
+        4.6,
+        'closed',
+        4.6,
+        'moderate',
+        3.8,
+        3.2,
       ],
       'line-opacity': 0.95,
     },
+  })
+
+  // Traffic vehicle flow pulses
+  map.addSource('traffic-pulses', { type: 'geojson', data: EMPTY_FEATURE_COLLECTION })
+  map.addLayer({
+    id: 'traffic-pulses-glow',
+    type: 'circle',
+    source: 'traffic-pulses',
+    paint: {
+      'circle-radius': 7.5,
+      'circle-color': ['get', 'color'],
+      'circle-blur': 0.65,
+      'circle-opacity': 0.65,
+    },
+  })
+  map.addLayer({
+    id: 'traffic-pulses-core',
+    type: 'circle',
+    source: 'traffic-pulses',
+    paint: {
+      'circle-radius': 3.2,
+      'circle-color': ['get', 'color'],
+      'circle-stroke-width': 1.2,
+      'circle-stroke-color': '#ffffff',
+      'circle-opacity': 0.95,
+    },
+  })
+
+  // Choke points / bottlenecks
+  map.addSource('choke-points', { type: 'geojson', data: EMPTY_FEATURE_COLLECTION })
+  map.addLayer({
+    id: 'choke-points-glow',
+    type: 'circle',
+    source: 'choke-points',
+    paint: {
+      'circle-radius': 11,
+      'circle-color': '#ef4444',
+      'circle-blur': 0.75,
+      'circle-opacity': 0.8,
+    },
+  })
+  map.addLayer({
+    id: 'choke-points-core',
+    type: 'circle',
+    source: 'choke-points',
+    paint: {
+      'circle-radius': 5.0,
+      'circle-color': '#ef4444',
+      'circle-stroke-width': 2.0,
+      'circle-stroke-color': '#ffffff',
+    },
+  })
+
+  // Interactive road inspection popup
+  map.on('mouseenter', 'roads-line', () => {
+    map.getCanvas().style.cursor = 'pointer'
+  })
+  map.on('mouseleave', 'roads-line', () => {
+    map.getCanvas().style.cursor = ''
+  })
+  map.on('click', 'roads-line', (e) => {
+    if (!e.features || !e.features[0]) return
+    const f = e.features[0]
+    const p = f.properties || {}
+    const popupHtml = `
+      <div class="city-map__popup">
+        <div class="city-map__popup-title">${p.name}</div>
+        <div class="city-map__popup-row">
+          <span>Flow Status:</span>
+          <span class="impact-status-tag impact-status-tag--${p.congestion}">${(p.congestion || 'free_flow').replace('_', ' ').toUpperCase()}</span>
+        </div>
+        <div class="city-map__popup-row">
+          <span>Avg Speed:</span>
+          <strong class="data-value">${p.speedKmh ?? 50} km/h</strong>
+        </div>
+        <div class="city-map__popup-row">
+          <span>Active Load:</span>
+          <strong class="data-value">${p.vehicleCount ?? 0} / ${p.capacity ?? 0} veh (${Math.round((p.saturation ?? 0) * 100)}%)</strong>
+        </div>
+        ${p.isChokePoint ? `<div class="city-map__popup-row" style="color: #ef4444; font-weight: 700; margin-top: 2px;">⚠️ Critical Choke Point</div>` : ''}
+      </div>
+    `
+    new Popup({ offset: 12 }).setLngLat(e.lngLat).setHTML(popupHtml).addTo(map)
   })
 
   // Critical infrastructure
@@ -444,13 +714,15 @@ function addTwinLayers(
     infraMarkerMapRef.current.set(infra.id, marker)
   })
 
-  // Ignition point
+  // Ignition point — the chosen demo address, or the default ridgeline start.
+  const focus = ignitionFocusRef.current
   const ignitionEl = document.createElement('div')
   ignitionEl.className = 'city-map__ignition'
   const ignitionMarker = new Marker({ element: ignitionEl })
-    .setLngLat(IGNITION_POINT.position)
-    .setPopup(new Popup({ offset: 16 }).setText(IGNITION_POINT.label))
+    .setLngLat([focus.lng, focus.lat])
+    .setPopup(new Popup({ offset: 16 }).setText(focus.label))
     .addTo(map)
+  ignitionMarkerRef.current = ignitionMarker
   twinMarkerRefs.current.push(ignitionMarker)
 }
 
@@ -556,22 +828,51 @@ function updateFireLayers(
     ],
   })
 
-  // Dynamically update road status
+  // Dynamically update road status & traffic choke points
   if (roadsSource && frame.impact?.roads) {
+    const roadTrafficMap = new Map(frame.traffic?.roads.map((r) => [r.roadId, r]))
     const roadStatusMap = new Map(frame.impact.roads.map((r) => [r.id, r.status]))
+
     roadsSource.setData({
       type: 'FeatureCollection',
-      features: ROADS.map((r) => ({
-        type: 'Feature',
-        properties: {
-          id: r.id,
-          name: r.name,
-          capacity: r.capacity,
-          status: roadStatusMap.get(r.id) ?? 'clear',
-        },
-        geometry: { type: 'LineString', coordinates: r.points },
-      })),
+      features: ROADS.map((r) => {
+        const trafficState = roadTrafficMap.get(r.id)
+        const status = roadStatusMap.get(r.id) ?? 'clear'
+        const congestion = trafficState?.congestionLevel ?? (status === 'blocked' ? 'closed' : 'free_flow')
+
+        return {
+          type: 'Feature',
+          properties: {
+            id: r.id,
+            name: r.name,
+            capacity: r.capacity,
+            status,
+            congestion,
+            speedKmh: trafficState?.speedKmh ?? 50,
+            vehicleCount: trafficState?.vehicleCount ?? 10,
+            saturation: trafficState?.saturationRatio ?? 0.2,
+            isChokePoint: trafficState?.isChokePoint ?? false,
+          },
+          geometry: { type: 'LineString', coordinates: r.points },
+        }
+      }),
     })
+
+    const chokeSource = map.getSource('choke-points') as GeoJSONSource | undefined
+    if (chokeSource) {
+      const chokeFeatures = ROADS.filter((r) => roadTrafficMap.get(r.id)?.isChokePoint).map((r) => ({
+        type: 'Feature',
+        properties: { name: r.name },
+        geometry: {
+          type: 'Point',
+          coordinates: interpolateAlongRoad(r.points, 0.5),
+        },
+      }))
+      chokeSource.setData({
+        type: 'FeatureCollection',
+        features: chokeFeatures,
+      })
+    }
   }
 
   // Dynamically update critical infrastructure markers

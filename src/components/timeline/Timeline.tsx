@@ -1,10 +1,12 @@
+import type { CSSProperties } from 'react'
 import type { SimulationFrame } from '../../simulation/simulationTypes'
 import type { PlaybackSpeed } from '../../hooks/useSimulation'
 import './Timeline.css'
 
 type TimelineProps = {
   frames: SimulationFrame[]
-  index: number
+  /** Fractional node index. The playhead glides between integer T-nodes. */
+  progress: number
   isPlaying: boolean
   speed: PlaybackSpeed
   onPlay: () => void
@@ -20,7 +22,7 @@ const SPEEDS: PlaybackSpeed[] = [1, 2, 5, 10]
 
 export default function Timeline({
   frames,
-  index,
+  progress,
   isPlaying,
   speed,
   onPlay,
@@ -60,17 +62,36 @@ export default function Timeline({
         </div>
       </div>
 
-      <div className="timeline__track">
-        {frames.map((f, i) => (
-          <button
-            key={f.time}
-            className={`timeline__mark${i === index ? ' timeline__mark--active' : ''}${i < index ? ' timeline__mark--past' : ''}`}
-            onClick={() => onGoTo(i)}
-          >
-            <span className="timeline__mark-dot" />
-            <span className="timeline__mark-label">T+{String(f.time).padStart(2, '0')}</span>
-          </button>
-        ))}
+      <div
+        className="timeline__track"
+        style={{ '--node-count': frames.length } as CSSProperties}
+      >
+        <div className="timeline__rail" aria-hidden="true">
+          <div
+            className="timeline__rail-fill"
+            style={{ width: `${(progress / Math.max(1, frames.length - 1)) * 100}%` }}
+          />
+          <div
+            className="timeline__playhead"
+            style={{ left: `${(progress / Math.max(1, frames.length - 1)) * 100}%` }}
+          />
+        </div>
+        <div className="timeline__nodes">
+          {frames.map((f, i) => {
+            const reached = i <= progress + 0.001
+            const nearest = Math.round(progress) === i
+            return (
+              <button
+                key={f.time}
+                className={`timeline__mark${reached ? ' timeline__mark--past' : ''}${nearest ? ' timeline__mark--near' : ''}`}
+                onClick={() => onGoTo(i)}
+              >
+                <span className="timeline__mark-dot" />
+                <span className="timeline__mark-label">T+{String(f.time).padStart(2, '0')}</span>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

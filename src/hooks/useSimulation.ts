@@ -1,67 +1,84 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { runSimulation } from '../simulation/simulationEngine'
+import { frameAt } from '../simulation/interpolateFrame'
 import { DEFAULT_SCENARIO, TIME_POINTS } from '../simulation/scenarios'
 import type { LngLat, ScenarioInput } from '../simulation/simulationTypes'
 
 export type PlaybackSpeed = 1 | 2 | 5 | 10
 
-const BASE_FRAME_INTERVAL_MS = 1400
+const BASE_FRAME_INTERVAL_MS = 2800
 
 export function useSimulation(ignition: LngLat) {
   const [scenario, setScenarioState] = useState<ScenarioInput>(DEFAULT_SCENARIO)
-  const [index, setIndex] = useState(0)
+  const [progress, setProgress] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [speed, setSpeed] = useState<PlaybackSpeed>(1)
-  const timerRef = useRef<number | null>(null)
+  const progressRef = useRef(0)
 
   const frames = useMemo(() => runSimulation(ignition, scenario, TIME_POINTS), [ignition, scenario])
+  const currentFrame = useMemo(() => frameAt(frames, progress), [frames, progress])
+
+  const seek = (next: number) => {
+    const clamped = Math.max(0, Math.min(next, frames.length - 1))
+    progressRef.current = clamped
+    setProgress(clamped)
+  }
 
   // Changing the scenario invalidates the current run — restart at T+00
   // rather than showing a stale index against newly computed frames.
   const setScenario = (next: ScenarioInput) => {
+    progressRef.current = 0
+    setProgress(0)
     setScenarioState(next)
-    setIndex(0)
     setIsPlaying(false)
   }
 
   useEffect(() => {
-    if (!isPlaying) {
-      if (timerRef.current) window.clearInterval(timerRef.current)
-      return
+    if (!isPlaying) return
+    let raf = 0
+    let last = performance.now()
+
+    const tick = (now: number) => {
+      const dt = Math.min(64, now - last)
+      last = now
+      const span = Math.max(0, frames.length - 1)
+      const next = progressRef.current + (dt * speed) / BASE_FRAME_INTERVAL_MS
+      if (next >= span) {
+        progressRef.current = span
+        setProgress(span)
+        setIsPlaying(false)
+        return
+      }
+      progressRef.current = next
+      setProgress(next)
+      raf = requestAnimationFrame(tick)
     }
-    timerRef.current = window.setInterval(() => {
-      setIndex((i) => {
-        if (i >= frames.length - 1) {
-          setIsPlaying(false)
-          return i
-        }
-        return i + 1
-      })
-    }, BASE_FRAME_INTERVAL_MS / speed)
-    return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current)
-    }
+
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
   }, [isPlaying, speed, frames.length])
 
   return {
     scenario,
     setScenario,
     frames,
-    index,
-    currentFrame: frames[index],
+    /** Fractional node index. 0 is the first T-node; integers land exactly on a node. */
+    progress,
+    index: Math.round(progress),
+    currentFrame,
     isPlaying,
     play: () => {
-      setIndex((i) => (i >= frames.length - 1 ? 0 : i))
+      if (progressRef.current >= frames.length - 1) seek(0)
       setIsPlaying(true)
     },
     pause: () => setIsPlaying(false),
-    step: () => setIndex((i) => Math.min(i + 1, frames.length - 1)),
-    prev: () => setIndex((i) => Math.max(i - 1, 0)),
+    step: () => seek(Math.floor(progressRef.current + 1e-6) + 1),
+    prev: () => seek(Math.ceil(progressRef.current - 1e-6) - 1),
     reset: () => {
       setIsPlaying(false)
-      setIndex(0)
+      seek(0)
     },
-    goTo: (i: number) => setIndex(Math.max(0, Math.min(i, frames.length - 1))),
+    goTo: (i: number) => seek(i),
     speed,
     setSpeed,
   }

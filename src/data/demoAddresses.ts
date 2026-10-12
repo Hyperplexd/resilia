@@ -49,3 +49,15 @@ export const DEMO_ADDRESSES: DemoAddress[] = [
 export function findAddress(id: string): DemoAddress | undefined {
   return DEMO_ADDRESSES.find((a) => a.id === id)
 }
+
+const STORAGE_KEY = 'resilia.demoAddress'
+
+export function readStoredAddressId(): string | null {
+  const id = sessionStorage.getItem(STORAGE_KEY)
+  return id && findAddress(id) ? id : null
+}
+
+export function storeAddressId(id: string | null) {
+  if (id && findAddress(id)) sessionStorage.setItem(STORAGE_KEY, id)
+  else sessionStorage.removeItem(STORAGE_KEY)
+}

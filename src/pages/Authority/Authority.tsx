@@ -38,6 +38,7 @@ export default function AuthorityPage() {
         {/* Live KPI Strip from active simulation frame */}
         <ImpactCards
           impact={activeFrame.impact}
+          traffic={activeFrame.traffic}
           areaHectares={activeFrame.areaHectares}
           time={activeFrame.time}
         />
@@ -59,6 +60,12 @@ export default function AuthorityPage() {
                 <span className="authority-briefing__label">High Risk Population</span>
                 <strong className="authority-briefing__value text-critical">
                   {activeFrame.impact.highRiskResidents.toLocaleString()} Residents ({activeFrame.impact.exposedResidents.toLocaleString()} total exposed)
+                </strong>
+              </div>
+              <div className="authority-briefing__item">
+                <span className="authority-briefing__label">Evacuation Traffic</span>
+                <strong className="authority-briefing__value text-warn">
+                  {activeFrame.traffic.networkAverageSpeedKmh} km/h avg · {activeFrame.traffic.chokePointsCount} active bottlenecks ({activeFrame.traffic.totalVehiclesEnRoute} vehicles en route)
                 </strong>
               </div>
               <div className="authority-briefing__item">

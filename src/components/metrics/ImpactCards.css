@@ -81,6 +81,12 @@
   border: 1px solid rgba(224, 168, 61, 0.4);
 }
 
+.impact-card__badge--ok {
+  background: rgba(75, 194, 146, 0.2);
+  color: var(--status-ok);
+  border: 1px solid rgba(75, 194, 146, 0.4);
+}
+
 .impact-card__badge--critical {
   background: rgba(226, 72, 63, 0.2);
   color: var(--status-critical);
@@ -261,7 +267,8 @@
 }
 
 .impact-status-tag--safe,
-.impact-status-tag--clear {
+.impact-status-tag--clear,
+.impact-status-tag--free_flow {
   color: var(--status-ok);
   border-color: rgba(75, 194, 146, 0.4);
   background: rgba(75, 194, 146, 0.1);
@@ -269,14 +276,16 @@
 
 .impact-status-tag--alert,
 .impact-status-tag--advisory,
-.impact-status-tag--smoke_hazard {
+.impact-status-tag--smoke_hazard,
+.impact-status-tag--moderate {
   color: var(--status-warn);
   border-color: rgba(224, 168, 61, 0.4);
   background: rgba(224, 168, 61, 0.1);
 }
 
 .impact-status-tag--threatened,
-.impact-status-tag--warning {
+.impact-status-tag--warning,
+.impact-status-tag--heavy {
   color: #ff9b66;
   border-color: rgba(255, 155, 102, 0.5);
   background: rgba(255, 155, 102, 0.15);
@@ -284,7 +293,9 @@
 
 .impact-status-tag--compromised,
 .impact-status-tag--blocked,
-.impact-status-tag--evacuate {
+.impact-status-tag--evacuate,
+.impact-status-tag--standstill,
+.impact-status-tag--closed {
   color: var(--status-critical);
   border-color: rgba(226, 72, 63, 0.5);
   background: rgba(226, 72, 63, 0.2);

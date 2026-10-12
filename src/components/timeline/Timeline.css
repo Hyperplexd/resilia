@@ -63,19 +63,44 @@
 }
 
 .timeline__track {
-  display: flex;
-  justify-content: space-between;
   position: relative;
 }
 
-.timeline__track::before {
-  content: '';
+.timeline__nodes {
+  display: grid;
+  grid-template-columns: repeat(var(--node-count), minmax(0, 1fr));
+}
+
+.timeline__rail {
   position: absolute;
-  left: 12px;
-  right: 12px;
+  left: calc(100% / var(--node-count) / 2);
+  right: calc(100% / var(--node-count) / 2);
   top: 5px;
   height: 1px;
   background: var(--border-subtle);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.timeline__rail-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 1px;
+  background: var(--accent-ember);
+}
+
+.timeline__playhead {
+  position: absolute;
+  top: 0;
+  width: 11px;
+  height: 11px;
+  margin-left: -5.5px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--accent-ember);
+  border: 1px solid var(--accent-ember);
+  box-shadow: 0 0 8px 2px rgba(255, 106, 61, 0.5);
 }
 
 .timeline__mark {
@@ -104,17 +129,11 @@
   border-color: var(--accent-ember);
 }
 
-.timeline__mark--active .timeline__mark-dot {
-  background: var(--accent-ember);
-  border-color: var(--accent-ember);
-  box-shadow: 0 0 8px 2px rgba(255, 106, 61, 0.5);
-}
-
 .timeline__mark-label {
   font-family: var(--font-data);
   font-size: 11px;
 }
 
-.timeline__mark--active .timeline__mark-label {
+.timeline__mark--near .timeline__mark-label {
   color: var(--text-primary);
 }

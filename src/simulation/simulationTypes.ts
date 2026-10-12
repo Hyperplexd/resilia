@@ -54,6 +54,28 @@ export type ImpactMetrics = {
   perimeterKm: number
 }
 
+export type CongestionLevel = 'free_flow' | 'moderate' | 'heavy' | 'standstill' | 'closed'
+
+export type RoadTrafficState = {
+  roadId: string
+  name: string
+  capacity: number
+  vehicleCount: number
+  saturationRatio: number
+  speedKmh: number
+  congestionLevel: CongestionLevel
+  isChokePoint: boolean
+  flowDirection: 'outbound' | 'inbound' | 'blocked'
+}
+
+export type NetworkTrafficMetrics = {
+  networkAverageSpeedKmh: number
+  totalVehiclesEnRoute: number
+  chokePointsCount: number
+  activeEvacuationThroughput: number
+  roads: RoadTrafficState[]
+}
+
 export type SimulationFrame = {
   /** Minutes since ignition. */
   time: number
@@ -67,5 +89,7 @@ export type SimulationFrame = {
   areaHectares: number
   /** Deterministic impact analytics for this frame */
   impact: ImpactMetrics
+  /** Deterministic network traffic analytics for this frame */
+  traffic: NetworkTrafficMetrics
 }
 

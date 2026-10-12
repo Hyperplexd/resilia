@@ -52,7 +52,7 @@ npm run lint
 
 ## Κατάσταση έργου (state summary)
 
-**Τρέχουσα έκδοση:** Phase 5 από τις 11 του πλάνου έχει ολοκληρωθεί και
+**Τρέχουσα έκδοση:** Phase 6 από τις 11 του πλάνου έχει ολοκληρωθεί και
 επαληθευτεί (`npm run build` + `npm run lint` καθαρά, 0 σφάλματα).
 
 **Τι δουλεύει σήμερα:**
@@ -95,9 +95,7 @@ npm run lint
 - Σκοτεινό "command-center" visual language (near-black βάση, ember/cyan
   accents), IBM Plex Mono για αριθμητικές τιμές/δεδομένα.
 
-**Τι μένει (Phases 6-11):**
-- **Phase 6 — Traffic:** ζητήθηκε animated χρωματισμός διαδρομών (μπλε όταν
-  ok, κόκκινο όταν όχι) — βλ. σημείωση παρακάτω με το reference video.
+**Τι μένει (Phases 7-11):**
 - **Phase 7 — Evacuation:** ζώνες/πρόοδος εκκένωσης, εκτιμώμενος χρόνος
   εκκαθάρισης, ασφαλείς διαδρομές.
 - **Phase 8 — Emergency Response:** ανάθεση/κίνηση μονάδων έκτακτης ανάγκης.
@@ -197,19 +195,32 @@ src/
   - `Authority.tsx` transformed into an operational briefing dashboard, and
     `Resident.tsx` now evaluates personal address wildfire threat and proximity.
 
-Next: **Phase 6 — Traffic** (traffic visualization, congestion, road blocks,
-rerouting, deterministic bottlenecks, animated route lines).
+- **Phase 6 — Traffic & Congestion (done).** `src/simulation/trafficModel.ts` computes
+  pure, deterministic evacuation traffic telemetry across all 5 Cedar Ridge corridors:
+  - Vehicle surge schedule and network saturation modeled as neighborhoods enter evacuation status.
+  - Road flow speeds (50 km/h down to 0 km/h) and congestion states (`free_flow`, `moderate`,
+    `heavy`, `standstill`, `closed`).
+  - Active choke point / bottleneck detection at critical feeder junctions.
+  - Outbound evacuation throughput (vehicles/min) reaching the safe perimeter.
+  - `CityMap.tsx` features animated vehicle pulses (`traffic-pulses` layer) streaming along
+    open escape arteries at live corridor speeds, road line casing, dynamic congestion-based
+    coloring (cyan → amber → crimson), pulsing bottleneck beacons (`choke-points`), and
+    interactive road click inspection popups.
+  - `ImpactCards.tsx` enriched with live network speed, active bottleneck counters, and
+    corridor saturation meters in the breakdown drawer.
+  - Operational readout and briefing updated in both `Simulation.tsx` and `Authority.tsx`.
 
-## Design notes for later phases
-
-- **Phase 6 (traffic):** the person wants animated route lines that shift
-  color by status (blue when OK, red when degraded) along the line, in the
-  style of https://www.youtube.com/watch?v=WbJ4OrFpr38 — revisit that link
-  when starting Phase 6.
+Next: **Phase 7 — Evacuation** (evacuation zones, phased evacuation orders, clearance time estimates, safe corridors).
 
 ## Known limitations
 
 - No real geocoding, GIS, ML, or emergency-service integration — everything
   is local, deterministic demo data by design.
-- No dynamic traffic simulation, evacuation clearance routing, emergency-response
-  dispatch, or scenario save/compare yet — that's Phases 6-10.
+- No evacuation clearance zone automation, emergency-response dispatch,
+  or scenario save/compare yet — that's Phases 7-10.
+
+## Change Log
+
+### 2026-10-12 — Road network follows the basemap
+
+- The five Cedar Ridge corridors in `src/data/demoCity.ts` now trace the real street centerlines on the map (Piuma Road, Cold Canyon Road, Malibu Canyon Road, and Crater Camp Drive) instead of straight chords across the terrain. Traffic color, vehicle pulses, and bottleneck markers sit on those streets. The ignition point sits on the ridgeline forest edge beside Cold Canyon so the fire still reaches the ridge road.
