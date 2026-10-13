@@ -3,6 +3,8 @@
   flex-direction: column;
   gap: var(--space-2);
   width: 100%;
+  position: relative;
+  z-index: 20;
 }
 
 .impact-cards {
@@ -160,12 +162,23 @@
   color: var(--text-secondary);
 }
 
-/* Drawer breakdown */
+/* Drawer breakdown — overlays the layout below instead of pushing it down */
 .impact-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  z-index: 2;
+  max-height: min(72vh, calc(100dvh - 220px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--bg-raised);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   padding: var(--space-4);
+  box-shadow:
+    0 22px 56px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.35);
   animation: slide-down 0.2s ease-out;
 }
 

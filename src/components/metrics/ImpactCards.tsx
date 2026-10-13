@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Users,
   Building2,
@@ -29,6 +29,27 @@ const STATUS_ORDER: Record<InfrastructureThreat['status'], number> = {
 
 export default function ImpactCards({ impact, traffic, evacuation, areaHectares, time }: ImpactCardsProps) {
   const [expanded, setExpanded] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [drawerMaxHeight, setDrawerMaxHeight] = useState<number>()
+
+  useEffect(() => {
+    if (!expanded) return
+
+    const update = () => {
+      const node = containerRef.current
+      if (!node) return
+      const next = Math.max(160, Math.floor(window.innerHeight - node.getBoundingClientRect().bottom - 20))
+      setDrawerMaxHeight((current) => (current === next ? current : next))
+    }
+
+    update()
+    window.addEventListener('resize', update)
+    window.addEventListener('scroll', update, true)
+    return () => {
+      window.removeEventListener('resize', update)
+      window.removeEventListener('scroll', update, true)
+    }
+  }, [expanded])
 
   // Find most critical infrastructure
   const highestInfraThreat = [...impact.threatenedInfrastructure].sort(
@@ -47,7 +68,7 @@ export default function ImpactCards({ impact, traffic, evacuation, areaHectares,
   const clearanceWarning = !clearanceCritical && (slowCorridors > 0 || evacuation.clearanceMinutes >= 20)
 
   return (
-    <div className="impact-container">
+    <div className="impact-container" ref={containerRef}>
       <div className="impact-cards">
         {/* Population Card */}
         <div className={`impact-card ${impact.highRiskResidents > 0 ? 'impact-card--critical' : impact.exposedResidents > 0 ? 'impact-card--warning' : ''}`}>
@@ -226,6 +247,8 @@ export default function ImpactCards({ impact, traffic, evacuation, areaHectares,
         <button
           type="button"
           className={`impact-drawer__toggle-btn ${expanded ? 'impact-drawer__toggle-btn--active' : ''}`}
+          aria-expanded={expanded}
+          aria-controls="impact-breakdown"
           onClick={() => setExpanded(!expanded)}
         >
           <span>{expanded ? 'Hide impact analysis breakdown' : 'View detailed impact breakdown (facilities, roads, evacuation, neighborhoods)'}</span>
@@ -235,7 +258,11 @@ export default function ImpactCards({ impact, traffic, evacuation, areaHectares,
 
       {/* Expanded Breakdown Drawer */}
       {expanded && (
-        <div className="impact-drawer">
+        <div
+          className="impact-drawer"
+          id="impact-breakdown"
+          style={drawerMaxHeight ? { maxHeight: drawerMaxHeight } : undefined}
+        >
           <div className="impact-drawer__grid">
             {/* Critical Facilities Section */}
             <div className="impact-drawer__panel">
