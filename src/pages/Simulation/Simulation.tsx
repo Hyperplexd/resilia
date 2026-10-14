@@ -4,6 +4,8 @@ import Shell from '../../components/layout/Shell'
 import CityMap from '../../components/map/CityMap'
 import ImpactCards from '../../components/metrics/ImpactCards'
 import ResponsePanel from '../../components/response/ResponsePanel'
+import SavedScenarios from '../../components/scenario/SavedScenarios'
+import CompareView from '../../components/scenario/CompareView'
 import ScenarioPanel from '../../components/scenario/ScenarioPanel'
 import Timeline from '../../components/timeline/Timeline'
 import { useAuth } from '../../auth/AuthContext'
@@ -12,8 +14,24 @@ import { findEmergencyUnit } from '../../data/emergencyUnits'
 import { useSimulation } from '../../hooks/useSimulation'
 import { CITY_CENTER, IGNITION_POINT } from '../../data/demoCity'
 import { buildDeploymentOrder, projectResponse, type DeploymentOrder, type ResponseTarget } from '../../simulation/responseModel'
+import { TIME_POINTS } from '../../simulation/scenarios'
+import {
+  buildResultRef,
+  createSavedScenario,
+  forgetScenario,
+  loadSavedScenarios,
+  rememberScenario,
+  scenarioRunKey,
+  suggestScenarioName,
+  type SavedScenario,
+} from '../../simulation/savedScenarios'
 import type { LngLat } from '../../simulation/simulationTypes'
 import './Simulation.css'
+
+function ignitionForAddress(id: string | null): LngLat {
+  const found = id ? findAddress(id) : undefined
+  return found ? [found.lng, found.lat] : IGNITION_POINT.position
+}
 
 export default function SimulationPage() {
   const { role } = useAuth()
@@ -26,12 +44,22 @@ export default function SimulationPage() {
   )
   const sim = useSimulation(ignition)
   const [orders, setOrders] = useState<DeploymentOrder[]>([])
-  const scenarioKey = `${sim.scenario.windDirection}|${sim.scenario.windSpeed}|${sim.scenario.dryness}|${sim.scenario.severity}|${ignition[0]}|${ignition[1]}`
+  const [saved, setSaved] = useState<SavedScenario[]>(() => loadSavedScenarios())
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [comparePair, setComparePair] = useState<{ a: SavedScenario; b: SavedScenario } | null>(null)
+  const [pendingLoad, setPendingLoad] = useState<SavedScenario | null>(null)
+  const scenarioKey = scenarioRunKey(sim.scenario, ignition)
   const [trackedScenario, setTrackedScenario] = useState(scenarioKey)
   if (trackedScenario !== scenarioKey) {
     setTrackedScenario(scenarioKey)
-    setOrders([])
-    sim.reset()
+    if (pendingLoad) {
+      setOrders(pendingLoad.orders)
+      const pendingKey = scenarioRunKey(pendingLoad.parameters, ignitionForAddress(pendingLoad.ignitionAddressId))
+      if (pendingKey === scenarioKey) setPendingLoad(null)
+    } else {
+      setOrders([])
+      sim.reset()
+    }
   }
 
   useEffect(() => {
@@ -58,6 +86,50 @@ export default function SimulationPage() {
 
   const recallUnit = (unitId: string) => {
     setOrders((prev) => prev.filter((item) => item.unitId !== unitId))
+  }
+
+  const reviewMinute = TIME_POINTS[sim.index] ?? 0
+  const activeResultRef = buildResultRef({
+    parameters: sim.scenario,
+    ignition,
+    minute: reviewMinute,
+    orders,
+  })
+
+  const saveForReview = (name: string) => {
+    const frame = sim.frames[sim.index] ?? sim.currentFrame
+    const record = createSavedScenario({
+      name,
+      ignitionAddressId: address?.id ?? null,
+      ignitionLabel: address?.label ?? IGNITION_POINT.label,
+      ignition,
+      parameters: sim.scenario,
+      nodeIndex: sim.index,
+      orders,
+      metrics: {
+        exposedResidents: frame.impact.exposedResidents,
+        buildingsAtRisk: frame.impact.buildingsAtRisk,
+        clearanceMinutes: frame.evacuation.clearanceMinutes,
+        evacuatedPercent: Math.round(frame.evacuation.progress * 100),
+        areaHectares: Math.round(frame.areaHectares * 10) / 10,
+        deployedCount: response?.deployedCount ?? 0,
+        onSceneCount: response?.onSceneCount ?? 0,
+      },
+    })
+    setSaved(rememberScenario(record))
+  }
+
+  const openSaved = (savedScenario: SavedScenario) => {
+    const nextIgnition = ignitionForAddress(savedScenario.ignitionAddressId)
+    const nextKey = scenarioRunKey(savedScenario.parameters, nextIgnition)
+    sim.pause()
+    sim.setScenario(savedScenario.parameters)
+    chooseIgnition(savedScenario.ignitionAddressId ?? '')
+    sim.goTo(savedScenario.nodeIndex)
+    setOrders(savedScenario.orders)
+    if (nextKey === scenarioKey) setPendingLoad(null)
+    else setPendingLoad(savedScenario)
+    setReviewOpen(false)
   }
 
   return (
@@ -104,6 +176,22 @@ export default function SimulationPage() {
 
         <div className="simulation__body">
           <div className="simulation__side">
+            {role === 'authority' && (
+              <SavedScenarios
+                open={reviewOpen}
+                draftName={suggestScenarioName(sim.scenario, address?.label ?? IGNITION_POINT.label, reviewMinute)}
+                scenarios={saved}
+                activeResultRef={activeResultRef}
+                onOpenChange={setReviewOpen}
+                onSave={saveForReview}
+                onLoad={openSaved}
+                onRemove={(id) => setSaved(forgetScenario(id))}
+                onCompare={(scenarioA, scenarioB) => {
+                  setComparePair({ a: scenarioA, b: scenarioB })
+                  setReviewOpen(false)
+                }}
+              />
+            )}
             <ScenarioPanel scenario={sim.scenario} onChange={sim.setScenario} />
             {response && (
               <ResponsePanel
@@ -186,6 +274,13 @@ export default function SimulationPage() {
             <b>Cloud9ine</b> Digital twin — The same scenario inputs always produce the same deterministic outcome.
         </p>
       </div>
+      {comparePair && (
+        <CompareView
+          scenarioA={comparePair.a}
+          scenarioB={comparePair.b}
+          onClose={() => setComparePair(null)}
+        />
+      )}
     </Shell>
   )
 }

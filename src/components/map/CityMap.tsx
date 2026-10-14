@@ -47,6 +47,8 @@ type CityMapProps = {
   response?: ResponseSnapshot | null
   /** Moves the ignition marker. Defaults to the ridgeline forest-edge point. */
   ignition?: IgnitionFocus
+  /** Locks pan, zoom, and rotate so two maps stay on the same camera. */
+  staticView?: boolean
 }
 
 const INFRA_LABEL: Record<Infrastructure['type'], string> = {
@@ -134,6 +136,7 @@ export default function CityMap({
   fireFrame = null,
   response = null,
   ignition,
+  staticView = false,
 }: CityMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<MapLibreMap | null>(null)
@@ -244,9 +247,10 @@ export default function CityMap({
         pitch,
         bearing: -14,
         maxPitch: 75,
+        interactive: !staticView,
       })
 
-      map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right')
+      if (!staticView) map.addControl(new NavigationControl({ visualizePitch: true }), 'top-right')
 
       map.on('load', () => {
         if (disposed) return

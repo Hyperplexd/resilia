@@ -87,3 +87,34 @@ The panel on the left sets wind direction (N through NW), wind speed, dryness, a
 Leave the hero wind and dryness as they are, and set severity to **low**. Clearance at ignition becomes **38 min** instead of **29**. Nobody is under an evacuate order yet. Ridgeline is only on advisory, with the order moved to **T+09**. Lower Village’s order moves to **T+15**, Creekside’s to **T+19**, and Town Center’s to **T+25**. Routes show open, and the stranded count is zero. Play forward again and the ridge road still closes once the fire reaches it, but the city has had a later, slower start.
 
 Put severity back to **severe** and the original hour returns. **T+15** is the minute in the table above.
+
+## Save for review
+
+**Save for Review** sits at the top of the left column. It opens **Saved scenarios**.
+
+Name the run. The field starts with a suggestion from the wind, the severity, the ignition, and the minute on screen, such as **NE wind · severe · Ridgeline forest edge · T+15**. **Save for Review** writes that run into this browser.
+
+Each row shows when it was saved, the ignition, the wind settings, the minute, burned area, exposed residents, clearance, percent evacuated, and any units that were deployed. **Open** puts that run back on the twin: ignition, wind, dryness, severity, the playhead, and the dispatches. The map and the cards recompute from those inputs, so the same name always comes back to the same minute. **On screen** marks the row that matches what you are looking at. **Remove** deletes that one entry.
+
+Leave the page and come back, or refresh it. The list is still there. A change to wind, dryness, severity, or ignition after you open a run starts a new hour and clears the dispatches, the same as any other new run.
+
+## Compare two runs
+
+Save the run you want as the baseline, change the wind or the ignition, and save that second run.
+
+In **Saved scenarios**, press **A** on the first row and **B** on the second. **Compare** opens both at once. The two maps share the town camera, so the fire, the roads, and the units are what change. The clock under the maps moves both from **T+00** to **T+60**. It starts on the later minute the two runs were saved at.
+
+The line above the maps names the largest gap. The table under the clock is Scenario A, Scenario B, and **B vs A**:
+
+| | What it compares |
+| --- | --- |
+| Affected area | Hectares burned |
+| Exposed residents | People inside the fire perimeter |
+| Buildings at risk | Structures inside that perimeter |
+| Clearance time | Minutes until the neighborhoods that can still move are clear |
+| Blocked roads | Corridors the fire has closed |
+| Bottlenecks | Roads the traffic model marks as choke points |
+| Units deployed | Engines, the ambulance, and the command unit that are away from their stations |
+| Critical facilities | Hospitals, schools, stations, shelters, or power sites that are no longer safe |
+
+An increase that makes the incident worse is marked on that row, with **▲** and the percent change from A. A decrease is **▼**. **0** means the minute matches. **Close** returns to the twin.

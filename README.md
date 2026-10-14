@@ -62,7 +62,7 @@ npm run lint
 
 ## Κατάσταση έργου (state summary)
 
-**Τρέχουσα έκδοση:** Phase 8 από τις 11 του πλάνου έχει ολοκληρωθεί και
+**Τρέχουσα έκδοση:** Phase 10 από τις 11 του πλάνου έχει ολοκληρωθεί και
 επαληθευτεί (`npm run build` + `npm run lint` καθαρά, 0 σφάλματα).
 
 **Τι δουλεύει σήμερα:**
@@ -70,7 +70,10 @@ npm run lint
   ρόλο και "switch role". Και οι δύο ρόλοι μπαίνουν κατευθείαν στο digital
   twin. Τα `/resident` και `/authority` ανακατευθύνουν στο `/simulation`.
 - Στο twin, το μενού **Ignition** διαλέγει το σημείο έναρξης (δάσος ή μία από
-  τις demo διευθύνσεις). Ο ρόλος Authority βλέπει επιπλέον την ανάπτυξη μονάδων.
+  τις demo διευθύνσεις). Ο ρόλος Authority βλέπει επιπλέον την ανάπτυξη μονάδων
+  και το **Save for Review**: αποθήκευση του τρέχοντος run στο `localStorage`,
+  λίστα, επαναφορά, και **Compare** ανάμεσα σε δύο αποθηκευμένα runs
+  (χάρτες δίπλα-δίπλα και delta metrics στο ίδιο λεπτό).
 - Digital twin (`/simulation`): πραγματικά 3D κτίρια, δρόμοι, ζώνες
   βλάστησης, όρια γειτονιών, 5 κρίσιμες υποδομές, σημείο ανάφλεξης.
 - Ντετερμινιστική προσομοίωση φωτιάς + καπνού: 7 frames (T+00 έως T+30),
@@ -115,10 +118,7 @@ npm run lint
 - Σκοτεινό "command-center" visual language (near-black βάση, ember/cyan
   accents), IBM Plex Mono για αριθμητικές τιμές/δεδομένα.
 
-**Τι μένει (Phases 9-11):**
-- **Phase 9 — Scenario Save:** αποθήκευση/επαναφόρτωση σεναρίων σε
-  `localStorage`.
-- **Phase 10 — Scenario Comparison:** σύγκριση A/B σεναρίων με delta metrics.
+**Τι μένει (Phase 11):**
 - **Phase 11 — Polish:** animations, loading/empty states, demo mode,
   responsive πολιτούρα.
 
@@ -137,7 +137,7 @@ src/
   auth/                 mock AuthContext (resident | authority)
   components/layout/    Shell + TopBar (persistent header)
   components/map/       CityMap (MapLibre GL wrapper)
-  components/scenario/  ScenarioPanel
+  components/scenario/  ScenarioPanel, SavedScenarios, CompareView
   components/response/  ResponsePanel
   components/timeline/  Timeline
   pages/                Login, Simulation
@@ -159,7 +159,7 @@ src/
   screen shows a brief deterministic "Verifying access" transition, then
   routes both roles into the digital twin. `/resident` and `/authority`
   redirect to `/simulation`. The role still decides what the twin shows:
-  the authority gets unit deployment, the resident does not. The shell's
+  the authority gets unit deployment, scenario save, and scenario comparison, the resident does not. The shell's
   TopBar shows the active role and a "Switch role" control that logs out
   and returns to landing.
 - **Phase 2 — Resident Address (done).** `src/data/demoAddresses.ts` is a
@@ -252,15 +252,37 @@ src/
   move the unit and count the ETA down. Recall sends it back to station.
   Changing the scenario clears assignments.
 
-Next: **Phase 9 — Scenario Save** (localStorage save, list, and reload).
+- **Phase 9 — Scenario Save (done).** The authority opens **Save for Review**
+  on the twin. A saved run stores its name, time, ignition, wind parameters,
+  playhead, dispatches, the metrics at that minute, and a result reference.
+  The frames are not stored: opening the row recomputes the same deterministic
+  run. The list lives in `localStorage` (`resilia.savedScenarios`) and is still
+  there after a refresh. Remove drops one entry.
+
+- **Phase 10 — Scenario Comparison (done).** From the saved list the authority
+  marks one run **A** and another **B**, then presses **Compare**. Both maps
+  use the same camera and the same minute, from **T+00** to **T+60**. The
+  table shows affected area, exposed residents, buildings at risk, clearance,
+  blocked roads, bottlenecks, units in the field, and critical facilities,
+  with the change from A to B. A larger harmful number is marked on that row.
+  The frames are recomputed from the saved inputs.
+
+Next: **Phase 11 — Hackathon Polish**.
 
 ## Known limitations
 
 - No real geocoding, GIS, ML, or emergency-service integration — everything
   is local, deterministic demo data by design.
-- No scenario save or side-by-side compare yet — that's Phases 9 and 10.
 
 ## Change Log
+
+### 2026-10-14 — Compare two saved runs
+
+- The authority can mark two saved runs as A and B and open them side by side. Both maps share a camera and a minute, and the table shows how far B moves from A.
+
+### 2026-10-14 — Save a run for review
+
+- The authority can name the current twin run and keep it in this browser. Opening it again restores the ignition, the wind, the minute, and any dispatches. The list survives a page refresh.
 
 ### 2026-10-14 — Emergency units, routes, and ETA
 
