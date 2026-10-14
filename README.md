@@ -118,10 +118,6 @@ npm run lint
 - Σκοτεινό "command-center" visual language (near-black βάση, ember/cyan
   accents), IBM Plex Mono για αριθμητικές τιμές/δεδομένα.
 
-**Τι μένει (Phase 11):**
-- **Phase 11 — Polish:** animations, loading/empty states, demo mode,
-  responsive πολιτούρα.
-
 ## Stack
 
 React + TypeScript + Vite. Routing via `react-router-dom`. Map via
@@ -266,8 +262,6 @@ src/
   blocked roads, bottlenecks, units in the field, and critical facilities,
   with the change from A to B. A larger harmful number is marked on that row.
   The frames are recomputed from the saved inputs.
-
-Next: **Phase 11 — Hackathon Polish**.
 
 ## Known limitations
 

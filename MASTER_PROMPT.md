@@ -1455,25 +1455,6 @@ The difference between scenarios is immediately understandable.
 
 ---
 
-## PHASE 11 — Hackathon Polish
-
-Only after the above features work:
-
-* improve animations
-* improve transitions
-* improve map styling
-* improve loading states
-* improve typography
-* improve empty states
-* improve error handling
-* optimize responsive layout
-* add demo mode
-* add final presentation polish
-
-Do NOT start with polish before functionality.
-
----
-
 # 33. Demo Mode
 
 Create a highly polished:
