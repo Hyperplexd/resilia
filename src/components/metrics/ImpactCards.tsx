@@ -8,8 +8,10 @@ import {
   Timer,
   ChevronDown,
   ChevronUp,
+  Siren,
 } from 'lucide-react'
 import type { EvacuationMetrics, ImpactMetrics, InfrastructureThreat, NetworkTrafficMetrics } from '../../simulation/simulationTypes'
+import type { ResponseSnapshot } from '../../simulation/responseModel'
 import './ImpactCards.css'
 
 type ImpactCardsProps = {
@@ -18,6 +20,7 @@ type ImpactCardsProps = {
   evacuation: EvacuationMetrics
   areaHectares: number
   time: number
+  response?: ResponseSnapshot | null
 }
 
 const STATUS_ORDER: Record<InfrastructureThreat['status'], number> = {
@@ -27,7 +30,7 @@ const STATUS_ORDER: Record<InfrastructureThreat['status'], number> = {
   safe: 0,
 }
 
-export default function ImpactCards({ impact, traffic, evacuation, areaHectares, time }: ImpactCardsProps) {
+export default function ImpactCards({ impact, traffic, evacuation, areaHectares, time, response }: ImpactCardsProps) {
   const [expanded, setExpanded] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const [drawerMaxHeight, setDrawerMaxHeight] = useState<number>()
@@ -192,6 +195,41 @@ export default function ImpactCards({ impact, traffic, evacuation, areaHectares,
             </span>
           </div>
         </div>
+
+        {response && (
+          <div className={`impact-card ${response.approachingCritical > 0 ? 'impact-card--warning' : ''}`}>
+            <div className="impact-card__header">
+              <span className="impact-card__label">
+                <Siren size={14} className="impact-card__icon" />
+                Emergency Units
+              </span>
+              {response.approachingCritical > 0 ? (
+                <span className="impact-card__badge impact-card__badge--warning">
+                  {response.approachingCritical} Critical
+                </span>
+              ) : response.deployedCount > 0 ? (
+                <span className="impact-card__badge impact-card__badge--warning">
+                  {response.deployedCount} En route
+                </span>
+              ) : (
+                <span className="impact-card__badge">{response.units.length} staged</span>
+              )}
+            </div>
+            <div className="impact-card__body">
+              <span className="impact-card__value data-value">
+                {response.deployedCount + response.onSceneCount}
+                <small> / {response.units.length}</small>
+              </span>
+              <span className="impact-card__subtext">
+                {response.deployedCount > 0 && response.soonestEtaLabel
+                  ? `En route · next ETA ${response.soonestEtaLabel}`
+                  : response.onSceneCount > 0
+                    ? `${response.onSceneCount} on scene · ${response.stagedCount} staged`
+                    : 'Engines, ambulance, and command'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Critical Infrastructure Card */}
         <div className={`impact-card ${highestInfraThreat?.status === 'compromised' || highestInfraThreat?.status === 'threatened' ? 'impact-card--critical' : highestInfraThreat?.status === 'alert' ? 'impact-card--warning' : ''}`}>

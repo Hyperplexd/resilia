@@ -11,6 +11,7 @@ import {
   type Infrastructure,
 } from '../../data/demoCity'
 import type { SimulationFrame } from '../../simulation/simulationTypes'
+import type { ResponseSnapshot } from '../../simulation/responseModel'
 import './CityMap.css'
 
 // OpenFreeMap: free MapLibre-compatible vector tiles, no API key, no
@@ -42,6 +43,8 @@ type CityMapProps = {
   showTwin?: boolean
   /** Current simulation frame — when provided (with showTwin), renders fire + smoke polygons. */
   fireFrame?: SimulationFrame | null
+  /** Authority response overlay: unit positions, routes, and destinations. */
+  response?: ResponseSnapshot | null
   /** Moves the ignition marker. Defaults to the ridgeline forest-edge point. */
   ignition?: IgnitionFocus
 }
@@ -129,6 +132,7 @@ export default function CityMap({
   markers = [],
   showTwin = false,
   fireFrame = null,
+  response = null,
   ignition,
 }: CityMapProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -136,6 +140,7 @@ export default function CityMap({
   const markerRefs = useRef<Marker[]>([])
   const twinMarkerRefs = useRef<Marker[]>([])
   const infraMarkerMapRef = useRef<Map<string, Marker>>(new Map())
+  const responseMarkerRefs = useRef<Map<string, Marker>>(new Map())
   const ignitionMarkerRef = useRef<Marker | null>(null)
   const [ready, setReady] = useState(false)
 
@@ -294,6 +299,12 @@ export default function CityMap({
     if (!map || !ready || !showTwin) return
     updateFireLayers(map, fireFrame, infraMarkerMapRef)
   }, [fireFrame, ready, showTwin])
+
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !ready || !showTwin) return
+    syncResponseOverlay(map, response, responseMarkerRefs)
+  }, [response, ready, showTwin])
 
   useEffect(() => {
     const marker = ignitionMarkerRef.current
@@ -881,6 +892,111 @@ function addFireLayers(map: MapLibreMap) {
     source: 'fire-front',
     paint: { 'line-color': '#ffe082', 'line-width': 1.2, 'line-opacity': 0.95 },
   })
+
+  map.addSource('response-routes', { type: 'geojson', data: EMPTY_FEATURE_COLLECTION })
+  map.addLayer({
+    id: 'response-route-casing',
+    type: 'line',
+    source: 'response-routes',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#0a101b', 'line-width': 7, 'line-opacity': 0.88 },
+  })
+  map.addLayer({
+    id: 'response-route-line',
+    type: 'line',
+    source: 'response-routes',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': 3.2,
+      'line-opacity': 0.95,
+      'line-dasharray': [1.5, 1.05],
+      'line-offset': ['get', 'offset'],
+    },
+  })
+
+  map.addSource('response-targets', { type: 'geojson', data: EMPTY_FEATURE_COLLECTION })
+  map.addLayer({
+    id: 'response-target-core',
+    type: 'circle',
+    source: 'response-targets',
+    paint: {
+      'circle-radius': 5,
+      'circle-color': ['get', 'color'],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#ffffff',
+    },
+  })
+}
+
+function syncResponseOverlay(
+  map: MapLibreMap,
+  response: ResponseSnapshot | null,
+  markerRefs: React.MutableRefObject<Map<string, Marker>>,
+) {
+  const routes = map.getSource('response-routes') as GeoJSONSource | undefined
+  const targets = map.getSource('response-targets') as GeoJSONSource | undefined
+  const units = response?.units ?? []
+  const moving = units.filter((unit) => unit.route && unit.route.length > 1)
+
+  routes?.setData({
+    type: 'FeatureCollection',
+    features: moving.map((unit) => ({
+      type: 'Feature' as const,
+      properties: { color: unit.color, offset: unit.lineOffset, name: unit.callsign },
+      geometry: { type: 'LineString' as const, coordinates: unit.route ?? [] },
+    })),
+  })
+  targets?.setData({
+    type: 'FeatureCollection',
+    features: moving.map((unit) => ({
+      type: 'Feature' as const,
+      properties: { color: unit.color, name: unit.targetLabel ?? unit.callsign },
+      geometry: { type: 'Point' as const, coordinates: unit.route?.[unit.route.length - 1] ?? unit.position },
+    })),
+  })
+
+  const seen = new Set<string>()
+  for (const unit of units) {
+    seen.add(unit.id)
+    let marker = markerRefs.current.get(unit.id)
+    if (!marker) {
+      const el = document.createElement('div')
+      el.className = 'city-map__unit'
+      marker = new Marker({ element: el, anchor: 'center' })
+        .setLngLat(unit.position)
+        .setPopup(new Popup({ offset: 16, closeButton: false }))
+        .addTo(map)
+      markerRefs.current.set(unit.id, marker)
+    }
+    const el = marker.getElement()
+    const markerClasses = [...el.classList].filter((name) => name.startsWith('maplibregl-'))
+    el.className = ['city-map__unit', `city-map__unit--${unit.type}`, `city-map__unit--${unit.status}`, ...markerClasses].join(' ')
+    el.textContent = unit.shortLabel
+    el.style.background = unit.color
+    marker.setLngLat(unit.position)
+    const etaRow = unit.status === 'deployed' && unit.etaLabel
+      ? `<div class="city-map__popup-row"><span>ETA:</span><strong class="data-value">${unit.etaLabel}</strong></div>`
+      : ''
+    const destRow = unit.targetLabel
+      ? `<div class="city-map__popup-row"><span>Destination:</span><strong>${unit.targetLabel}</strong></div>`
+      : `<div class="city-map__popup-row"><span>Station:</span><strong>${unit.stationName}</strong></div>`
+    const status = unit.status === 'on_scene' ? 'ON SCENE' : unit.status === 'deployed' ? 'DEPLOYED' : 'STAGED'
+    marker.getPopup()?.setHTML(`
+      <div class="city-map__popup">
+        <div class="city-map__popup-title">${unit.callsign}</div>
+        <div class="city-map__popup-row"><span>Status:</span><strong>${status}</strong></div>
+        ${destRow}
+        ${etaRow}
+      </div>
+    `)
+  }
+
+  for (const [id, marker] of markerRefs.current) {
+    if (seen.has(id)) continue
+    marker.remove()
+    markerRefs.current.delete(id)
+  }
 }
 
 function evacRouteFor(roadId: string, frame: SimulationFrame | null | undefined): '' | 'safe' | 'diverted' {

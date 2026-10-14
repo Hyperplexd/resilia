@@ -210,3 +210,37 @@
   gap: 8px;
 }
 
+.city-map__unit {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-data);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #1a100c;
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+.city-map__unit--command {
+  color: #062226;
+}
+
+.city-map__unit--deployed {
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.35),
+    0 0 14px rgba(255, 106, 61, 0.75);
+}
+
+.city-map__unit--on_scene {
+  box-shadow:
+    0 0 0 3px rgba(75, 194, 146, 0.95),
+    0 2px 8px rgba(0, 0, 0, 0.45);
+}
+

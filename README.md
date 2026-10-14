@@ -52,21 +52,25 @@ npm run lint
 * **Πράσινο/κεχριμπαρί halo** γύρω από τους δρόμους που είναι ο ενεργός διάδρομος διαφυγής (amber όταν η διαδρομή είναι detour).
 * **Κύκλοι safe zone:** Central Avenue Shelter, Cedar Ridge Elementary, South Perimeter Gate. Πράσινο όταν δέχονται κόσμο, κόκκινο όταν η εγκατάσταση δεν είναι πια ασφαλής.
 
+### 6. Μονάδες έκτακτης ανάγκης (authority)
+* **Τι είναι:** Engine 01, Engine 02, Ambulance 01 και Command Unit.
+* **Χρώμα/Στυλ:** Μικρή ετικέτα πάνω στο χάρτη (E1, E2, A1, CMD). Πορτοκαλί/κεχριμπαρί για τις πυροσβεστικές, κόκκινο για το ασθενοφόρο, κυανό για τη διοίκηση.
+* **Σκοπός:** Σε στάση κάθονται στον σταθμό τους. Μετά το Deploy ζωγραφίζεται η διαδρομή στο οδικό δίκτυο, ένας κύκλος στον προορισμό, και η μονάδα κινείται κατά μήκος της καθώς κυλάει το timeline.
+
 ---
 
 
 ## Κατάσταση έργου (state summary)
 
-**Τρέχουσα έκδοση:** Phase 7 από τις 11 του πλάνου έχει ολοκληρωθεί και
+**Τρέχουσα έκδοση:** Phase 8 από τις 11 του πλάνου έχει ολοκληρωθεί και
 επαληθευτεί (`npm run build` + `npm run lint` καθαρά, 0 σφάλματα).
 
 **Τι δουλεύει σήμερα:**
-- Landing screen με mock ρόλους (Resident / Authority), route guard, TopBar
-  με τρέχοντα ρόλο και "switch role".
-- Resident: επιλογή διεύθυνσης από fixed demo λίστα (Cedar Ridge) → εστίαση
-  χάρτη + τοπική εκτίμηση κινδύνου/εγγύτητας στο μέτωπο + κουμπί εισόδου στο digital twin.
-- Authority: Command Center dashboard με ζωντανό operational overview,
-  KPI summary, ειδοποιήσεις κρίσιμων υποδομών και άμεση είσοδο στο digital twin.
+- Landing screen με mock ρόλους (Resident / Authority), TopBar με τρέχοντα
+  ρόλο και "switch role". Και οι δύο ρόλοι μπαίνουν κατευθείαν στο digital
+  twin. Τα `/resident` και `/authority` ανακατευθύνουν στο `/simulation`.
+- Στο twin, το μενού **Ignition** διαλέγει το σημείο έναρξης (δάσος ή μία από
+  τις demo διευθύνσεις). Ο ρόλος Authority βλέπει επιπλέον την ανάπτυξη μονάδων.
 - Digital twin (`/simulation`): πραγματικά 3D κτίρια, δρόμοι, ζώνες
   βλάστησης, όρια γειτονιών, 5 κρίσιμες υποδομές, σημείο ανάφλεξης.
 - Ντετερμινιστική προσομοίωση φωτιάς + καπνού: 7 frames (T+00 έως T+30),
@@ -85,6 +89,12 @@ npm run lint
   South Perimeter Gate) και προτεινόμενος διάδρομος με detour όταν κλείνει
   η κύρια διαδρομή. Ο χάρτης χρωματίζει τη φάση εντολής και τον διάδρομο.
   Ο κάτοικος βλέπει διαδρομή, safe zone και clearance για το incident στο T+15.
+- **Emergency Response (Phase 8):** τέσσερις μονάδες (Engine 01, Engine 02,
+  Ambulance 01, Command Unit) σταθμευμένες σε σταθμό, νοσοκομείο και καταφύγιο.
+  Η αρχή επιλέγει μονάδα και στόχο (μέτωπο, γειτονιά, νοσοκομείο, ζώνη
+  εκκένωσης, choke point), βλέπει διαδρομή στο οδικό δίκτυο και ETA, και η
+  μονάδα κινείται με το timeline. Κλειστός δρόμος μένει στη διαδρομή μόνο αν
+  δεν υπάρχει άλλη, και τότε το ETA μακραίνει.
 
 **Βασικές αποφάσεις σχεδίασης:**
 - Καμία πραγματική γεωκωδικοποίηση, backend, auth provider ή database —
@@ -105,8 +115,7 @@ npm run lint
 - Σκοτεινό "command-center" visual language (near-black βάση, ember/cyan
   accents), IBM Plex Mono για αριθμητικές τιμές/δεδομένα.
 
-**Τι μένει (Phases 8-11):**
-- **Phase 8 — Emergency Response:** ανάθεση/κίνηση μονάδων έκτακτης ανάγκης.
+**Τι μένει (Phases 9-11):**
 - **Phase 9 — Scenario Save:** αποθήκευση/επαναφόρτωση σεναρίων σε
   `localStorage`.
 - **Phase 10 — Scenario Comparison:** σύγκριση A/B σεναρίων με delta metrics.
@@ -125,12 +134,13 @@ state and `localStorage`.
 
 ```
 src/
-  auth/                 mock AuthContext + RequireRole guard
+  auth/                 mock AuthContext (resident | authority)
   components/layout/    Shell + TopBar (persistent header)
   components/map/       CityMap (MapLibre GL wrapper)
   components/scenario/  ScenarioPanel
+  components/response/  ResponsePanel
   components/timeline/  Timeline
-  pages/                Login, Resident, Authority, Simulation
+  pages/                Login, Simulation
   simulation/           deterministic fire/smoke engine
   data/                 demoAddresses.ts, demoCity.ts
   hooks/                useSimulation
@@ -147,15 +157,15 @@ src/
   active role (`resident` | `authority`) in React state, persisted to
   `localStorage` — no real credentials. Picking a role on the landing
   screen shows a brief deterministic "Verifying access" transition, then
-  routes to the matching dashboard. `RequireRole` guards `/resident` and
-  `/authority`, bouncing to `/` if the role doesn't match. The shell's
+  routes both roles into the digital twin. `/resident` and `/authority`
+  redirect to `/simulation`. The role still decides what the twin shows:
+  the authority gets unit deployment, the resident does not. The shell's
   TopBar shows the active role and a "Switch role" control that logs out
   and returns to landing.
 - **Phase 2 — Resident Address (done).** `src/data/demoAddresses.ts` is a
   fixed lookup table (no real geocoding) placing the fictional town "Cedar
   Ridge" on real wildland-urban-interface terrain so the map reads as
-  plausible. The Resident page's address picker confirms the location and
-  focuses the map on it.
+  plausible. The twin's Ignition menu uses that list to place the fire.
 - **Phase 3 — Digital Twin (done).** Map engine swapped from react-leaflet
   to **MapLibre GL** for real 3D building extrusion (`fill-extrusion` on
   the vector `building` layer) — Leaflet is 2D-only. Tiles default to
@@ -166,10 +176,7 @@ src/
   vegetation/fuel zones, neighborhood boundaries, 5 critical-infrastructure
   points, one ignition point) around the existing Cedar Ridge addresses.
   `CityMap`'s `showTwin` prop renders all of it as MapLibre GeoJSON layers;
-  it's on by default on the new `/simulation` route, which both the
-  Resident ("What happens if wildfire starts here?" button, shown once an
-  address is confirmed) and Authority ("View digital twin" button) pages
-  link into.
+  it's on by default on `/simulation`, which is where both roles land.
 - **Phase 4 — Fire Simulation (done).** `src/simulation/` holds the pure,
   React-free engine: `fireModel.ts` computes a deterministic fire-radius
   and smoke-radius per compass angle (distance × wind alignment × dryness
@@ -200,8 +207,7 @@ src/
   - `CityMap.tsx` dynamically colors affected roads (crimson red when blocked,
     amber when threatened, cyan when clear) and pulses alert states on threatened
     infrastructure markers with rich proximity popups.
-  - `Authority.tsx` transformed into an operational briefing dashboard, and
-    `Resident.tsx` now evaluates personal address wildfire threat and proximity.
+  - The same cards and map are the twin on `/simulation`.
 
 - **Phase 6 — Traffic & Congestion (done).** `src/simulation/trafficModel.ts` computes
   pure, deterministic evacuation traffic telemetry across all 5 Cedar Ridge corridors:
@@ -216,7 +222,7 @@ src/
     interactive road click inspection popups.
   - `ImpactCards.tsx` enriched with live network speed, active bottleneck counters, and
     corridor saturation meters in the breakdown drawer.
-  - Operational readout and briefing updated in both `Simulation.tsx` and `Authority.tsx`.
+  - Operational readout updated on `Simulation.tsx`.
 
 - **Phase 7 — Evacuation (done).** `src/simulation/evacuationModel.ts` advances a
   deterministic evacuation on top of each frame's impact and traffic:
@@ -232,18 +238,33 @@ src/
     that shelter is threatened or the road is blocked (detour to the South Perimeter
     Gate along Hollow Creek Lane).
   - `CityMap` paints neighborhood phase fills, a corridor halo on the recommended
-    roads, and safe-zone markers. `ImpactCards`, the authority briefing, and the
-    resident address panel all read the same frame metrics.
+    roads, and safe-zone markers. `ImpactCards` and the twin map read the same frame metrics.
 
-Next: **Phase 8 — Emergency Response** (deployable units, route, ETA, target selection).
+- **Phase 8 — Emergency Response (done).** `src/data/emergencyUnits.ts` stations
+  four units: Engine 01 and Engine 02 at Fire Station 4, Ambulance 01 at
+  Ridgeline Medical Center, Command Unit at Central Avenue Shelter.
+  `src/simulation/responseModel.ts` routes a dispatch along the existing road
+  graph (no external router). Speed follows the corridor's congestion, and a
+  closed road is used only when every open path is gone — that dispatch is
+  marked and the ETA gets longer. The authority panel on `/simulation` chooses
+  a unit and a target (fire front, neighborhood, hospital, evacuation zone, or
+  choke point). The map draws the route immediately; play, pause, and scrub
+  move the unit and count the ETA down. Recall sends it back to station.
+  Changing the scenario clears assignments.
+
+Next: **Phase 9 — Scenario Save** (localStorage save, list, and reload).
 
 ## Known limitations
 
 - No real geocoding, GIS, ML, or emergency-service integration — everything
   is local, deterministic demo data by design.
-- No emergency-response dispatch or scenario save/compare yet — that's Phases 8-10.
+- No scenario save or side-by-side compare yet — that's Phases 9 and 10.
 
 ## Change Log
+
+### 2026-10-14 — Emergency units, routes, and ETA
+
+- Authority can deploy Engine 01, Engine 02, Ambulance 01, or the Command Unit onto the road network. The twin draws the route and destination, shows an ETA, and moves the unit with the timeline.
 
 ### 2026-10-12 — Road network follows the basemap
 

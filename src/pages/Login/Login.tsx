@@ -25,7 +25,7 @@ export default function Login() {
     if (!pendingRole) return
     const timer = window.setTimeout(() => {
       login(pendingRole)
-      navigate(pendingRole === 'resident' ? '/resident' : '/authority')
+      navigate('/simulation')
     }, VERIFY_DELAY_MS)
     return () => window.clearTimeout(timer)
   }, [pendingRole, login, navigate])

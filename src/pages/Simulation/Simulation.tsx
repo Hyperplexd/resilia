@@ -1,54 +1,96 @@
-import { useEffect, useMemo } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import Shell from '../../components/layout/Shell'
 import CityMap from '../../components/map/CityMap'
 import ImpactCards from '../../components/metrics/ImpactCards'
+import ResponsePanel from '../../components/response/ResponsePanel'
 import ScenarioPanel from '../../components/scenario/ScenarioPanel'
 import Timeline from '../../components/timeline/Timeline'
 import { useAuth } from '../../auth/AuthContext'
-import { findAddress, readStoredAddressId, storeAddressId } from '../../data/demoAddresses'
+import { DEMO_ADDRESSES, findAddress, readStoredAddressId, storeAddressId } from '../../data/demoAddresses'
+import { findEmergencyUnit } from '../../data/emergencyUnits'
 import { useSimulation } from '../../hooks/useSimulation'
 import { CITY_CENTER, IGNITION_POINT } from '../../data/demoCity'
+import { buildDeploymentOrder, projectResponse, type DeploymentOrder, type ResponseTarget } from '../../simulation/responseModel'
 import type { LngLat } from '../../simulation/simulationTypes'
 import './Simulation.css'
 
 export default function SimulationPage() {
-  const navigate = useNavigate()
   const { role } = useAuth()
-  const [searchParams] = useSearchParams()
-  const addressId = searchParams.get('address') ?? (role === 'resident' ? readStoredAddressId() : null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const addressId = searchParams.get('address') ?? readStoredAddressId()
   const address = addressId ? findAddress(addressId) : undefined
   const ignition = useMemo<LngLat>(
     () => (address ? [address.lng, address.lat] : IGNITION_POINT.position),
     [address],
   )
   const sim = useSimulation(ignition)
+  const [orders, setOrders] = useState<DeploymentOrder[]>([])
+  const scenarioKey = `${sim.scenario.windDirection}|${sim.scenario.windSpeed}|${sim.scenario.dryness}|${sim.scenario.severity}|${ignition[0]}|${ignition[1]}`
+  const [trackedScenario, setTrackedScenario] = useState(scenarioKey)
+  if (trackedScenario !== scenarioKey) {
+    setTrackedScenario(scenarioKey)
+    setOrders([])
+    sim.reset()
+  }
 
   useEffect(() => {
-    if (role === 'resident' && address) storeAddressId(address.id)
-  }, [role, address])
+    if (address) storeAddressId(address.id)
+  }, [address])
+
+  const chooseIgnition = (id: string) => {
+    storeAddressId(id || null)
+    if (id) setSearchParams({ address: id })
+    else setSearchParams({})
+  }
+
+  const response = useMemo(
+    () => (role === 'authority' ? projectResponse(orders, sim.currentFrame.time) : null),
+    [role, orders, sim.currentFrame.time],
+  )
+
+  const deployUnit = (unitId: string, target: ResponseTarget) => {
+    const current = response?.units.find((unit) => unit.id === unitId)
+    const origin = current && current.status !== 'staged' ? current.position : findEmergencyUnit(unitId)?.home
+    const order = buildDeploymentOrder(unitId, target, sim.currentFrame.traffic, sim.currentFrame.time, origin)
+    setOrders((prev) => [...prev.filter((item) => item.unitId !== unitId), order])
+  }
+
+  const recallUnit = (unitId: string) => {
+    setOrders((prev) => prev.filter((item) => item.unitId !== unitId))
+  }
 
   return (
     <Shell>
       <div className="simulation">
         <div className="simulation__origin">
+          <label className="simulation__ignition" htmlFor="ignition-address">
+            <span>Ignition</span>
+            <select
+              id="ignition-address"
+              value={address?.id ?? ''}
+              onChange={(event) => chooseIgnition(event.target.value)}
+            >
+              <option value="">{IGNITION_POINT.label}</option>
+              {DEMO_ADDRESSES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
           <p>
             {address ? (
               <>
-                Wildfire ignition at <strong>{address.label}</strong>
+                Wildfire starts at <strong>{address.label}</strong>
                 <span className="simulation__origin-detail"> · {address.neighborhood}</span>
               </>
             ) : (
               <>
-                Wildfire ignition at <strong>{IGNITION_POINT.label}</strong>
+                Wildfire starts at <strong>{IGNITION_POINT.label}</strong>
               </>
             )}
           </p>
-          {role === 'resident' && (
-            <button type="button" className="simulation__change-address" onClick={() => navigate('/resident')}>
-              Change demo address
-            </button>
-          )}
         </div>
 
         <ImpactCards
@@ -57,10 +99,21 @@ export default function SimulationPage() {
           evacuation={sim.currentFrame.evacuation}
           areaHectares={sim.currentFrame.areaHectares}
           time={Math.round(sim.currentFrame.time)}
+          response={response}
         />
 
         <div className="simulation__body">
-          <ScenarioPanel scenario={sim.scenario} onChange={sim.setScenario} />
+          <div className="simulation__side">
+            <ScenarioPanel scenario={sim.scenario} onChange={sim.setScenario} />
+            {response && (
+              <ResponsePanel
+                frame={sim.currentFrame}
+                snapshot={response}
+                onDeploy={deployUnit}
+                onRecall={recallUnit}
+              />
+            )}
+          </div>
 
           <div className="simulation__map-col">
             <div className="simulation__map-wrap">
@@ -74,6 +127,7 @@ export default function SimulationPage() {
                 pitch={55}
                 showTwin
                 fireFrame={sim.currentFrame}
+                response={response}
                 ignition={
                   address
                     ? { lat: address.lat, lng: address.lng, label: `Ignition — ${address.label}` }
@@ -100,6 +154,16 @@ export default function SimulationPage() {
               <span>
                 Evacuated <strong className="data-value">{Math.round(sim.currentFrame.evacuation.progress * 100)}%</strong>
               </span>
+              {response && (
+                <span>
+                  Response{' '}
+                  <strong className="data-value">
+                    {response.deployedCount} deployed
+                    {response.onSceneCount > 0 ? ` · ${response.onSceneCount} on scene` : ''}
+                    {response.soonestEtaLabel ? ` · ETA ${response.soonestEtaLabel}` : ''}
+                  </strong>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -119,8 +183,7 @@ export default function SimulationPage() {
         />
 
         <p className="simulation__note">
-          Digital twin — Cedar Ridge. Evacuation orders, clearance time, and safe corridors
-          update with the fire and the road network. The same scenario inputs always produce the same deterministic outcome.
+            <b>Cloud9ine</b> Digital twin — The same scenario inputs always produce the same deterministic outcome.
         </p>
       </div>
     </Shell>

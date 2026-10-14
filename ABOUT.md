@@ -31,8 +31,8 @@ RESILIA now features full deterministic impact analytics across population expos
   - Critical infrastructure markers display animated danger auras when threatened or compromised and feature rich interactive popups with real-time meter proximity.
 
 ### 6. Authority & Resident Screen Enhancements
-- **Authority Dashboard ([`src/pages/Authority/Authority.tsx`](file:///f:/_SEAGATE_HD/PYTHON/RESILIA/src/pages/Authority/Authority.tsx)):** Transformed into a command center briefing with live incident KPI metrics, situational map snapshot, and direct launch into the digital twin.
-- **Resident View ([`src/pages/Resident/Resident.tsx`](file:///f:/_SEAGATE_HD/PYTHON/RESILIA/src/pages/Resident/Resident.tsx)):** When an address is selected, calculates and shows the resident's personal threat level, wildfire proximity in meters, and air quality exposure.
+- **Authority:** The separate T+15 briefing page was removed. Choosing the authority role opens the digital twin, which carries the same KPI cards and map.
+- **Resident:** The separate address screen was removed. Choosing the resident role opens the same digital twin, with the Ignition menu for the demo addresses.
 
 ---
 
