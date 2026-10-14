@@ -829,10 +829,15 @@ function addTwinLayers(
   // Critical infrastructure
   infraMarkerMapRef.current.clear()
   INFRASTRUCTURE.forEach((infra) => {
+    // MapLibre positions the outer node with an inline transform. The badge
+    // is a child so status pulse and hover scale do not replace that translate.
+    const anchor = document.createElement('div')
+    anchor.className = 'city-map__infra-anchor'
     const el = document.createElement('div')
     el.className = `city-map__infra city-map__infra--${infra.type}`
     el.textContent = INFRA_LABEL[infra.type]
-    const marker = new Marker({ element: el })
+    anchor.appendChild(el)
+    const marker = new Marker({ element: anchor, anchor: 'center' })
       .setLngLat(infra.position)
       .setPopup(new Popup({ offset: 14 }).setText(infra.name))
       .addTo(map)
@@ -1161,7 +1166,8 @@ function updateFireLayers(
     frame.impact.threatenedInfrastructure.forEach((threat) => {
       const marker = infraMarkerMapRef.current.get(threat.id)
       if (!marker) return
-      const el = marker.getElement()
+      const el = marker.getElement().querySelector('.city-map__infra')
+      if (!(el instanceof HTMLElement)) return
       el.classList.remove(
         'city-map__infra--status-safe',
         'city-map__infra--status-alert',
