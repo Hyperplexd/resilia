@@ -41,7 +41,9 @@
 
 ## Act 5: The ask and close (30 sec)
 
-> "Today RESILIA is a what-if engine. Next, we plug in real wind, real terrain, and real fire-spread models. The goal: every municipality gets a flight simulator for its worst day.
+> Thanks to RESILIA, every resident in our community can now has access to a personalized, interactive evacuation planning tool… which should be a standard for all communities.
+>
+> Today RESILIA is a what-if engine. Next, we plug in real wind, real terrain, and real fire-spread models. The goal: every municipality gets a flight simulator for its worst day.
 >
 > We can't stop every fire. But we can stop being surprised by them.
 >
