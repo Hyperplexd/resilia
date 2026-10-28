@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Map as MapLibreMapCtor, NavigationControl, Marker, Popup } from 'maplibre-gl'
+import { Map as MapLibreMapCtor, NavigationControl, Marker, Popup, setWorkerUrl } from 'maplibre-gl'
 import type { Map as MapLibreMap, StyleSpecification, GeoJSONSource } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import {
   ROADS,
@@ -13,6 +14,11 @@ import {
 import type { SimulationFrame } from '../../simulation/simulationTypes'
 import type { ResponseSnapshot } from '../../simulation/responseModel'
 import './CityMap.css'
+
+// The published bundle's import.meta.url no longer sits next to
+// maplibre-gl-worker.mjs, so tile loading 404s unless the worker is emitted
+// as its own file and registered before the first map is created.
+setWorkerUrl(maplibreWorkerUrl)
 
 // OpenFreeMap: free MapLibre-compatible vector tiles, no API key, no
 // rate limit. If VITE_MAPTILER_KEY is set, MapTiler's style is used instead
